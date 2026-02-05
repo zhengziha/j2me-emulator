@@ -673,15 +673,54 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 
                 printf("[解释器] invokespecial: 方法引用索引 #%d\n", method_ref_index);
                 
-                // 简化处理：invokespecial通常是构造方法调用，不返回值
-                // 弹出this引用 (如果栈不为空)
-                if (frame->operand_stack.top > 0) {
-                    j2me_int this_ref;
-                    result = j2me_operand_stack_pop(&frame->operand_stack, &this_ref);
-                    printf("[解释器] invokespecial: 弹出this引用 0x%x\n", this_ref);
-                }
+                // 从常量池解析方法引用
+                const char* class_name = NULL;
+                const char* method_name = NULL;
+                const char* descriptor = NULL;
                 
-                printf("[解释器] invokespecial: 构造方法调用完成 (简化实现)\n");
+                j2me_method_t* current_method = (j2me_method_t*)frame->method_info;
+                if (current_method && current_method->owner_class) {
+                    j2me_error_t resolve_result = j2me_interpreter_resolve_method_ref(
+                        current_method->owner_class, method_ref_index,
+                        &class_name, &method_name, &descriptor);
+                    
+                    if (resolve_result == J2ME_SUCCESS) {
+                        printf("[解释器] invokespecial: 解析到方法 %s.%s%s\n", 
+                               class_name, method_name, descriptor);
+                        
+                        // 检查是否为构造方法
+                        if (strcmp(method_name, "<init>") == 0) {
+                            // 构造方法调用，弹出this引用
+                            if (frame->operand_stack.top > 0) {
+                                j2me_int this_ref;
+                                result = j2me_operand_stack_pop(&frame->operand_stack, &this_ref);
+                                printf("[解释器] invokespecial: 弹出this引用 0x%x (构造方法)\n", this_ref);
+                            }
+                            printf("[解释器] invokespecial: 构造方法调用完成\n");
+                        } else {
+                            // 其他特殊方法调用，简化处理
+                            if (frame->operand_stack.top > 0) {
+                                j2me_int this_ref;
+                                result = j2me_operand_stack_pop(&frame->operand_stack, &this_ref);
+                                printf("[解释器] invokespecial: 弹出this引用 0x%x\n", this_ref);
+                            }
+                            printf("[解释器] invokespecial: 特殊方法调用完成\n");
+                        }
+                    } else {
+                        printf("[解释器] invokespecial: 方法解析失败: %d\n", resolve_result);
+                        result = resolve_result;
+                    }
+                } else {
+                    // 简化处理：invokespecial通常是构造方法调用，不返回值
+                    // 弹出this引用 (如果栈不为空)
+                    if (frame->operand_stack.top > 0) {
+                        j2me_int this_ref;
+                        result = j2me_operand_stack_pop(&frame->operand_stack, &this_ref);
+                        printf("[解释器] invokespecial: 弹出this引用 0x%x\n", this_ref);
+                    }
+                    
+                    printf("[解释器] invokespecial: 构造方法调用完成 (简化实现)\n");
+                }
             }
             break;
             
@@ -693,26 +732,50 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 
                 printf("[解释器] invokevirtual: 方法引用索引 #%d\n", method_ref_index);
                 
-                // 尝试调用本地方法 (Graphics类方法)
-                j2me_error_t native_result = j2me_native_method_invoke(vm, frame,
-                                                                       "javax/microedition/lcdui/Graphics",
-                                                                       "setColor",
-                                                                       "(I)V",
-                                                                       NULL);
+                // 从常量池解析方法引用
+                const char* class_name = NULL;
+                const char* method_name = NULL;
+                const char* descriptor = NULL;
                 
-                if (native_result == J2ME_SUCCESS) {
-                    printf("[解释器] invokevirtual: 本地方法调用成功\n");
-                } else if (native_result == J2ME_ERROR_METHOD_NOT_FOUND) {
-                    // 不是本地方法，使用简化处理
+                j2me_method_t* current_method = (j2me_method_t*)frame->method_info;
+                if (current_method && current_method->owner_class) {
+                    j2me_error_t resolve_result = j2me_interpreter_resolve_method_ref(
+                        current_method->owner_class, method_ref_index,
+                        &class_name, &method_name, &descriptor);
+                    
+                    if (resolve_result == J2ME_SUCCESS) {
+                        // 尝试调用本地方法
+                        j2me_error_t native_result = j2me_native_method_invoke(vm, frame,
+                                                                               class_name,
+                                                                               method_name,
+                                                                               descriptor,
+                                                                               NULL);
+                        
+                        if (native_result == J2ME_SUCCESS) {
+                            printf("[解释器] invokevirtual: 本地方法调用成功\n");
+                        } else if (native_result == J2ME_ERROR_METHOD_NOT_FOUND) {
+                            // 不是本地方法，使用简化处理
+                            if (frame->operand_stack.top > 0) {
+                                j2me_int this_ref;
+                                result = j2me_operand_stack_pop(&frame->operand_stack, &this_ref);
+                                printf("[解释器] invokevirtual: 弹出this引用 0x%x\n", this_ref);
+                            }
+                            printf("[解释器] invokevirtual: 方法调用完成 (简化实现)\n");
+                        } else {
+                            printf("[解释器] invokevirtual: 本地方法调用失败: %d\n", native_result);
+                            result = native_result;
+                        }
+                    } else {
+                        printf("[解释器] invokevirtual: 方法解析失败: %d\n", resolve_result);
+                        result = resolve_result;
+                    }
+                } else {
+                    printf("[解释器] invokevirtual: 无法获取当前方法信息，使用简化处理\n");
                     if (frame->operand_stack.top > 0) {
                         j2me_int this_ref;
                         result = j2me_operand_stack_pop(&frame->operand_stack, &this_ref);
                         printf("[解释器] invokevirtual: 弹出this引用 0x%x\n", this_ref);
                     }
-                    printf("[解释器] invokevirtual: 方法调用完成 (简化实现)\n");
-                } else {
-                    printf("[解释器] invokevirtual: 本地方法调用失败: %d\n", native_result);
-                    result = native_result;
                 }
             }
             break;
@@ -725,32 +788,84 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 
                 printf("[解释器] invokestatic: 方法引用索引 #%d\n", method_ref_index);
                 
-                // 根据方法引用索引判断调用哪个方法
-                if (method_ref_index == 8) {
-                    // 这是Display.getDisplay(MIDlet)方法
-                    // 弹出MIDlet参数
-                    j2me_int midlet_ref;
-                    result = j2me_operand_stack_pop(&frame->operand_stack, &midlet_ref);
-                    if (result == J2ME_SUCCESS) {
-                        printf("[解释器] invokestatic: 弹出MIDlet参数 0x%x\n", midlet_ref);
+                // 从常量池解析方法引用
+                const char* class_name = NULL;
+                const char* method_name = NULL;
+                const char* descriptor = NULL;
+                
+                j2me_method_t* current_method = (j2me_method_t*)frame->method_info;
+                if (current_method && current_method->owner_class) {
+                    j2me_error_t resolve_result = j2me_interpreter_resolve_method_ref(
+                        current_method->owner_class, method_ref_index,
+                        &class_name, &method_name, &descriptor);
+                    
+                    if (resolve_result == J2ME_SUCCESS) {
+                        printf("[解释器] invokestatic: 解析到方法 %s.%s%s\n", 
+                               class_name, method_name, descriptor);
                         
-                        // 调用Display.getDisplay()本地方法
-                        j2me_error_t native_result = j2me_native_method_invoke(vm, frame,
-                                                                               "javax/microedition/lcdui/Display",
-                                                                               "getDisplay",
-                                                                               "()Ljavax/microedition/lcdui/Display;",
-                                                                               NULL);
-                        
-                        if (native_result == J2ME_SUCCESS) {
-                            printf("[解释器] invokestatic: Display.getDisplay()调用成功\n");
+                        // 检查是否为Display.getDisplay方法
+                        if (strcmp(class_name, "javax/microedition/lcdui/Display") == 0 &&
+                            strcmp(method_name, "getDisplay") == 0) {
+                            
+                            // 检查方法签名，如果有参数则弹出
+                            if (strstr(descriptor, "Ljavax/microedition/midlet/MIDlet;") != NULL) {
+                                // 弹出MIDlet参数
+                                j2me_int midlet_ref;
+                                result = j2me_operand_stack_pop(&frame->operand_stack, &midlet_ref);
+                                if (result == J2ME_SUCCESS) {
+                                    printf("[解释器] invokestatic: 弹出MIDlet参数 0x%x\n", midlet_ref);
+                                }
+                            }
+                            
+                            // 调用Display.getDisplay()本地方法
+                            j2me_error_t native_result = j2me_native_method_invoke(vm, frame,
+                                                                                   "javax/microedition/lcdui/Display",
+                                                                                   "getDisplay",
+                                                                                   "()Ljavax/microedition/lcdui/Display;",
+                                                                                   NULL);
+                            
+                            if (native_result == J2ME_SUCCESS) {
+                                printf("[解释器] invokestatic: Display.getDisplay()调用成功\n");
+                            } else {
+                                printf("[解释器] invokestatic: Display.getDisplay()调用失败: %d\n", native_result);
+                                result = native_result;
+                            }
                         } else {
-                            printf("[解释器] invokestatic: Display.getDisplay()调用失败: %d\n", native_result);
-                            result = native_result;
+                            // 其他静态方法调用，简化处理
+                            printf("[解释器] invokestatic: 其他静态方法调用 (简化实现)\n");
                         }
+                    } else {
+                        printf("[解释器] invokestatic: 方法解析失败: %d\n", resolve_result);
+                        result = resolve_result;
                     }
                 } else {
-                    // 其他静态方法调用，简化处理
-                    printf("[解释器] invokestatic: 其他静态方法调用 (简化实现)\n");
+                    // 根据方法引用索引判断调用哪个方法 (向后兼容)
+                    if (method_ref_index == 8) {
+                        // 这是Display.getDisplay(MIDlet)方法
+                        // 弹出MIDlet参数
+                        j2me_int midlet_ref;
+                        result = j2me_operand_stack_pop(&frame->operand_stack, &midlet_ref);
+                        if (result == J2ME_SUCCESS) {
+                            printf("[解释器] invokestatic: 弹出MIDlet参数 0x%x\n", midlet_ref);
+                            
+                            // 调用Display.getDisplay()本地方法
+                            j2me_error_t native_result = j2me_native_method_invoke(vm, frame,
+                                                                                   "javax/microedition/lcdui/Display",
+                                                                                   "getDisplay",
+                                                                                   "()Ljavax/microedition/lcdui/Display;",
+                                                                                   NULL);
+                            
+                            if (native_result == J2ME_SUCCESS) {
+                                printf("[解释器] invokestatic: Display.getDisplay()调用成功\n");
+                            } else {
+                                printf("[解释器] invokestatic: Display.getDisplay()调用失败: %d\n", native_result);
+                                result = native_result;
+                            }
+                        }
+                    } else {
+                        // 其他静态方法调用，简化处理
+                        printf("[解释器] invokestatic: 其他静态方法调用 (简化实现)\n");
+                    }
                 }
             }
             break;
@@ -828,6 +943,126 @@ j2me_error_t j2me_interpreter_execute_batch(j2me_vm_t* vm, j2me_thread_t* thread
     }
     
     return result;
+}
+
+j2me_error_t j2me_interpreter_resolve_method_ref(j2me_class_t* class_info, 
+                                                 uint16_t method_ref_index,
+                                                 const char** class_name,
+                                                 const char** method_name,
+                                                 const char** descriptor) {
+    if (!class_info || !class_name || !method_name || !descriptor) {
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    // 检查方法引用索引是否有效
+    if (method_ref_index == 0 || method_ref_index >= class_info->constant_pool.count) {
+        printf("[方法解析] 错误: 无效的方法引用索引 #%d (常量池大小: %d)\n", 
+               method_ref_index, class_info->constant_pool.count);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    // 常量池索引从1开始，但数组索引从0开始，所以需要减1
+    j2me_constant_pool_entry_t* method_ref = &class_info->constant_pool.entries[method_ref_index - 1];
+    
+    // 检查是否为方法引用或接口方法引用
+    if (method_ref->tag != CONSTANT_Methodref && method_ref->tag != CONSTANT_InterfaceMethodref) {
+        printf("[方法解析] 错误: 常量池条目 #%d 不是方法引用 (类型: %d)\n", 
+               method_ref_index, method_ref->tag);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    uint16_t class_index = method_ref->info.ref_info.class_index;
+    uint16_t name_and_type_index = method_ref->info.ref_info.name_and_type_index;
+    
+    printf("[方法解析] 方法引用 #%d: class_index=%d, name_and_type_index=%d\n", 
+           method_ref_index, class_index, name_and_type_index);
+    
+    // 解析类名
+    if (class_index == 0 || class_index >= class_info->constant_pool.count) {
+        printf("[方法解析] 错误: 无效的类索引 #%d (常量池大小: %d)\n", 
+               class_index, class_info->constant_pool.count);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    j2me_constant_pool_entry_t* class_entry = &class_info->constant_pool.entries[class_index - 1];
+    if (class_entry->tag != CONSTANT_Class) {
+        printf("[方法解析] 错误: 常量池条目 #%d 不是类引用 (类型: %d)\n", 
+               class_index, class_entry->tag);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    uint16_t class_name_index = class_entry->info.class_info.name_index;
+    if (class_name_index == 0 || class_name_index >= class_info->constant_pool.count) {
+        printf("[方法解析] 错误: 无效的类名索引 #%d (常量池大小: %d)\n", 
+               class_name_index, class_info->constant_pool.count);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    j2me_constant_pool_entry_t* class_name_entry = &class_info->constant_pool.entries[class_name_index - 1];
+    if (class_name_entry->tag != CONSTANT_Utf8) {
+        printf("[方法解析] 错误: 类名条目 #%d 不是UTF-8字符串 (类型: %d)\n", 
+               class_name_index, class_name_entry->tag);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    *class_name = class_name_entry->info.utf8.bytes;
+    
+    // 解析方法名和描述符
+    if (name_and_type_index == 0 || name_and_type_index >= class_info->constant_pool.count) {
+        printf("[方法解析] 错误: 无效的名称和类型索引 #%d (常量池大小: %d)\n", 
+               name_and_type_index, class_info->constant_pool.count);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    j2me_constant_pool_entry_t* name_and_type_entry = &class_info->constant_pool.entries[name_and_type_index - 1];
+    if (name_and_type_entry->tag != CONSTANT_NameAndType) {
+        printf("[方法解析] 错误: 常量池条目 #%d 不是名称和类型 (类型: %d)\n", 
+               name_and_type_index, name_and_type_entry->tag);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    uint16_t method_name_index = name_and_type_entry->info.name_and_type_info.name_index;
+    uint16_t descriptor_index = name_and_type_entry->info.name_and_type_info.descriptor_index;
+    
+    printf("[方法解析] 名称和类型 #%d: method_name_index=%d, descriptor_index=%d\n", 
+           name_and_type_index, method_name_index, descriptor_index);
+    
+    // 解析方法名
+    if (method_name_index == 0 || method_name_index >= class_info->constant_pool.count) {
+        printf("[方法解析] 错误: 无效的方法名索引 #%d (常量池大小: %d)\n", 
+               method_name_index, class_info->constant_pool.count);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    j2me_constant_pool_entry_t* method_name_entry = &class_info->constant_pool.entries[method_name_index - 1];
+    if (method_name_entry->tag != CONSTANT_Utf8) {
+        printf("[方法解析] 错误: 方法名条目 #%d 不是UTF-8字符串 (类型: %d)\n", 
+               method_name_index, method_name_entry->tag);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    *method_name = method_name_entry->info.utf8.bytes;
+    
+    // 解析描述符
+    if (descriptor_index == 0 || descriptor_index >= class_info->constant_pool.count) {
+        printf("[方法解析] 错误: 无效的描述符索引 #%d (常量池大小: %d)\n", 
+               descriptor_index, class_info->constant_pool.count);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    j2me_constant_pool_entry_t* descriptor_entry = &class_info->constant_pool.entries[descriptor_index - 1];
+    if (descriptor_entry->tag != CONSTANT_Utf8) {
+        printf("[方法解析] 错误: 描述符条目 #%d 不是UTF-8字符串 (类型: %d)\n", 
+               descriptor_index, descriptor_entry->tag);
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    *descriptor = descriptor_entry->info.utf8.bytes;
+    
+    printf("[方法解析] 成功解析方法引用 #%d: %s.%s%s\n", 
+           method_ref_index, *class_name, *method_name, *descriptor);
+    
+    return J2ME_SUCCESS;
 }
 
 j2me_error_t j2me_interpreter_execute_method(j2me_vm_t* vm, j2me_method_t* method, void* object, void* args) {

@@ -115,4 +115,19 @@ j2me_error_t j2me_interpreter_execute_batch(j2me_vm_t* vm, j2me_thread_t* thread
  */
 j2me_error_t j2me_interpreter_execute_method(j2me_vm_t* vm, j2me_method_t* method, void* object, void* args);
 
+/**
+ * @brief 从常量池解析方法引用
+ * @param class_info 类信息
+ * @param method_ref_index 方法引用索引
+ * @param class_name 输出类名
+ * @param method_name 输出方法名
+ * @param descriptor 输出方法描述符
+ * @return 错误码
+ */
+j2me_error_t j2me_interpreter_resolve_method_ref(j2me_class_t* class_info, 
+                                                 uint16_t method_ref_index,
+                                                 const char** class_name,
+                                                 const char** method_name,
+                                                 const char** descriptor);
+
 #endif // J2ME_INTERPRETER_H
