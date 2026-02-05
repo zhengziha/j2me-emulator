@@ -168,14 +168,14 @@ void render_game(j2me_graphics_context_t* context, game_state_t* game) {
     j2me_color_t white = {255, 255, 255, 255};
     j2me_graphics_set_color(context, white);
     
-    // 分数显示
+    // 分数显示（中文）
     char score_text[32];
-    snprintf(score_text, sizeof(score_text), "Score: %d", game->score);
+    snprintf(score_text, sizeof(score_text), "得分: %d", game->score);
     j2me_graphics_draw_string(context, score_text, 10, 10, 0x00);
     
-    // 控制说明
-    j2me_graphics_draw_string(context, "Arrow Keys: Move", 10, 290, 0x00);
-    j2me_graphics_draw_string(context, "Space: +10 pts", 10, 305, 0x00);
+    // 控制说明（中文）
+    j2me_graphics_draw_string(context, "方向键: 移动", 10, 290, 0x00);
+    j2me_graphics_draw_string(context, "空格: +10分", 10, 305, 0x00);
     
     // 绘制玩家位置指示器
     j2me_color_t yellow = {255, 255, 0, 255};
@@ -284,7 +284,8 @@ void game_main_loop(j2me_vm_t* vm) {
     printf("   - 方向键: 移动玩家\n");
     printf("   - 空格键: 获得分数 (+10)\n");
     printf("   - 鼠标点击: 移动到指针位置 (+5)\n");
-    printf("   - ESC键: 退出游戏\n\n");
+    printf("   - ESC键: 退出游戏\n");
+    printf("   - 现在支持中文字体显示！\n\n");
     
     if (!vm->display || !vm->display->context) {
         printf("❌ 图形上下文未初始化\n");
@@ -335,7 +336,7 @@ void game_main_loop(j2me_vm_t* vm) {
         printf("\n🛑 虚拟机停止\n");
     }
     
-    printf("🏆 最终分数: %d\n", game.score);
+    printf("🏆 最终得分: %d\n", game.score);
     printf("📊 总帧数: %d\n", frame_count);
     
     // 清理游戏资源

@@ -461,6 +461,11 @@ int j2me_graphics_get_string_width(j2me_graphics_context_t* context, const char*
     // 如果有TTF字体，使用真实的文本度量
     if (context->current_font.ttf_font) {
         int width, height;
+        // 首先尝试UTF-8度量（支持中文）
+        if (TTF_SizeUTF8(context->current_font.ttf_font, text, &width, &height) == 0) {
+            return width;
+        }
+        // 回退到普通度量
         if (TTF_SizeText(context->current_font.ttf_font, text, &width, &height) == 0) {
             return width;
         }
@@ -692,19 +697,38 @@ void j2me_graphics_load_default_font(j2me_graphics_context_t* context) {
         return;
     }
     
-    // 尝试加载系统默认字体
+    // 尝试加载系统默认字体，优先使用中文字体
     const char* font_paths[] = {
-        // macOS系统字体
-        "/System/Library/Fonts/HelveticaNeue.ttc",
+        // 中文字体 (最高优先级)
+        "/System/Library/Fonts/STHeiti Medium.ttc",      // 华文黑体 (中等) - 最佳中文支持
+        "/System/Library/Fonts/Hiragino Sans GB.ttc",    // 冬青黑体简体中文 - 优秀中文支持
+        "/System/Library/Fonts/STHeiti Light.ttc",       // 华文黑体 (细)
+        "/System/Library/Fonts/PingFang.ttc",            // 苹果苹方字体 - 现代中文字体
+        "/System/Library/Fonts/STSong.ttc",              // 华文宋体 - 传统中文字体
+        "/System/Library/Fonts/CJKSymbolsFallback.ttc",  // CJK符号字体
+        // Linux中文字体
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",     // 文泉驿微米黑
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",       // 文泉驿正黑
+        "/usr/share/fonts/truetype/arphic/uming.ttc",         // AR PL UMing
+        "/usr/share/fonts/truetype/arphic/ukai.ttc",          // AR PL UKai
+        "/usr/share/fonts/truetype/droid/DroidSansFallback.ttf", // Droid Sans Fallback
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", // Noto Sans CJK
+        // Windows中文字体
+        "/Windows/Fonts/simsun.ttc",                     // 宋体
+        "/Windows/Fonts/simhei.ttf",                     // 黑体
+        "/Windows/Fonts/msyh.ttc",                       // 微软雅黑
+        "/Windows/Fonts/msyhbd.ttc",                     // 微软雅黑粗体
+        // macOS英文字体 (备选，但某些也支持中文)
+        "/System/Library/Fonts/HelveticaNeue.ttc",       // 部分支持中文
         "/System/Library/Fonts/Geneva.ttf",
         "/System/Library/Fonts/Menlo.ttc",
         "/System/Library/Fonts/Symbol.ttf",
-        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
-        // Linux系统字体
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",    // 支持亚洲字符
+        // Linux英文字体 (备选)
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         "/usr/share/fonts/TTF/arial.ttf",
-        // Windows系统字体 (如果在Wine环境下)
+        // Windows字体 (备选)
         "/usr/share/fonts/truetype/msttcorefonts/arial.ttf",
         NULL
     };
@@ -751,8 +775,28 @@ bool j2me_graphics_load_font(j2me_graphics_context_t* context, const char* font_
     
     const char* font_extensions[] = {".ttf", ".ttc", ".otf", NULL};
     
-    // 首先尝试直接匹配已知的字体文件
+    // 首先尝试直接匹配已知的字体文件，优先中文字体
     const char* known_fonts[] = {
+        // 中文字体 (最高优先级)
+        "/System/Library/Fonts/STHeiti Medium.ttc",      // 华文黑体 - 最佳中文支持
+        "/System/Library/Fonts/Hiragino Sans GB.ttc",    // 冬青黑体简体中文
+        "/System/Library/Fonts/STHeiti Light.ttc",       // 华文黑体 (细)
+        "/System/Library/Fonts/PingFang.ttc",            // 苹果苹方字体
+        "/System/Library/Fonts/STSong.ttc",              // 华文宋体
+        "/System/Library/Fonts/CJKSymbolsFallback.ttc",  // CJK符号字体
+        // Linux中文字体
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",     // 文泉驿微米黑
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",       // 文泉驿正黑
+        "/usr/share/fonts/truetype/arphic/uming.ttc",         // AR PL UMing
+        "/usr/share/fonts/truetype/arphic/ukai.ttc",          // AR PL UKai
+        "/usr/share/fonts/truetype/droid/DroidSansFallback.ttf", // Droid Sans Fallback
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", // Noto Sans CJK
+        // Windows中文字体
+        "/Windows/Fonts/simsun.ttc",                     // 宋体
+        "/Windows/Fonts/simhei.ttf",                     // 黑体
+        "/Windows/Fonts/msyh.ttc",                       // 微软雅黑
+        "/Windows/Fonts/msyhbd.ttc",                     // 微软雅黑粗体
+        // 英文字体 (备选)
         "/System/Library/Fonts/HelveticaNeue.ttc",
         "/System/Library/Fonts/Geneva.ttf", 
         "/System/Library/Fonts/Menlo.ttc",
@@ -839,7 +883,7 @@ void j2me_graphics_render_ttf_text(j2me_graphics_context_t* context, const char*
         return;
     }
     
-    // 创建文本表面
+    // 创建文本表面 - 使用UTF-8渲染函数支持中文
     SDL_Color color = {
         context->current_color.r,
         context->current_color.g,
@@ -847,10 +891,16 @@ void j2me_graphics_render_ttf_text(j2me_graphics_context_t* context, const char*
         context->current_color.a
     };
     
-    SDL_Surface* text_surface = TTF_RenderText_Blended(context->current_font.ttf_font, text, color);
+    // 首先尝试UTF-8渲染（支持中文）
+    SDL_Surface* text_surface = TTF_RenderUTF8_Blended(context->current_font.ttf_font, text, color);
     if (!text_surface) {
-        printf("[图形] 错误: 创建文本表面失败: %s\n", TTF_GetError());
-        return;
+        printf("[图形] UTF-8渲染失败，尝试普通渲染: %s\n", TTF_GetError());
+        // 回退到普通文本渲染
+        text_surface = TTF_RenderText_Blended(context->current_font.ttf_font, text, color);
+        if (!text_surface) {
+            printf("[图形] 错误: 创建文本表面失败: %s\n", TTF_GetError());
+            return;
+        }
     }
     
     // 创建纹理
