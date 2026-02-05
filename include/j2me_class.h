@@ -183,6 +183,7 @@ struct j2me_class_loader {
     j2me_class_t* loaded_classes; // 已加载的类链表
     char* classpath;              // 类路径
     j2me_vm_t* vm;               // 虚拟机实例
+    void* jar_file;              // JAR文件对象 (j2me_jar_file_t*)
 };
 
 /**
@@ -192,6 +193,14 @@ struct j2me_class_loader {
  * @return 类加载器指针
  */
 j2me_class_loader_t* j2me_class_loader_create(j2me_vm_t* vm, const char* classpath);
+
+/**
+ * @brief 设置类加载器的JAR文件
+ * @param loader 类加载器
+ * @param jar_file JAR文件对象
+ * @return 错误码
+ */
+j2me_error_t j2me_class_loader_set_jar_file(j2me_class_loader_t* loader, void* jar_file);
 
 /**
  * @brief 销毁类加载器

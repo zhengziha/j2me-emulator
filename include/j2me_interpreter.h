@@ -2,6 +2,7 @@
 #define J2ME_INTERPRETER_H
 
 #include "j2me_types.h"
+#include "j2me_class.h"
 #include <stddef.h>
 
 /**
@@ -103,5 +104,15 @@ j2me_error_t j2me_interpreter_execute_instruction(j2me_vm_t* vm, j2me_thread_t* 
  * @return 错误码
  */
 j2me_error_t j2me_interpreter_execute_batch(j2me_vm_t* vm, j2me_thread_t* thread, uint32_t max_instructions);
+
+/**
+ * @brief 执行方法
+ * @param vm 虚拟机实例
+ * @param method 方法
+ * @param object 对象实例 (对于实例方法)
+ * @param args 方法参数
+ * @return 错误码
+ */
+j2me_error_t j2me_interpreter_execute_method(j2me_vm_t* vm, j2me_method_t* method, void* object, void* args);
 
 #endif // J2ME_INTERPRETER_H

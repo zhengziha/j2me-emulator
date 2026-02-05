@@ -14,24 +14,60 @@
 
 // Java字节码指令定义 (部分核心指令)
 #define OPCODE_NOP          0x00
+#define OPCODE_ACONST_NULL  0x01
+#define OPCODE_ICONST_M1    0x02
 #define OPCODE_ICONST_0     0x03
 #define OPCODE_ICONST_1     0x04
 #define OPCODE_ICONST_2     0x05
 #define OPCODE_ICONST_3     0x06
 #define OPCODE_ICONST_4     0x07
 #define OPCODE_ICONST_5     0x08
+#define OPCODE_BIPUSH       0x10
+#define OPCODE_SIPUSH       0x11
+#define OPCODE_ILOAD        0x15
+#define OPCODE_ALOAD_0      0x2a
+#define OPCODE_ALOAD_1      0x2b
+#define OPCODE_ALOAD_2      0x2c
+#define OPCODE_ALOAD_3      0x2d
 #define OPCODE_ILOAD_0      0x1a
 #define OPCODE_ILOAD_1      0x1b
 #define OPCODE_ILOAD_2      0x1c
 #define OPCODE_ILOAD_3      0x1d
+#define OPCODE_ISTORE       0x36
+#define OPCODE_ASTORE_0     0x4b
+#define OPCODE_ASTORE_1     0x4c
+#define OPCODE_ASTORE_2     0x4d
+#define OPCODE_ASTORE_3     0x4e
 #define OPCODE_ISTORE_0     0x3b
 #define OPCODE_ISTORE_1     0x3c
 #define OPCODE_ISTORE_2     0x3d
 #define OPCODE_ISTORE_3     0x3e
+#define OPCODE_POP          0x57
+#define OPCODE_POP2         0x58
+#define OPCODE_DUP          0x59
+#define OPCODE_SWAP         0x5f
 #define OPCODE_IADD         0x60
 #define OPCODE_ISUB         0x64
 #define OPCODE_IMUL         0x68
 #define OPCODE_IDIV         0x6c
+#define OPCODE_IREM         0x70
+#define OPCODE_INEG         0x74
+#define OPCODE_ISHL         0x78
+#define OPCODE_ISHR         0x7a
+#define OPCODE_IUSHR        0x7c
+#define OPCODE_IAND         0x7e
+#define OPCODE_IOR          0x80
+#define OPCODE_IXOR         0x82
+#define OPCODE_IFEQ         0x99
+#define OPCODE_IFNE         0x9a
+#define OPCODE_IFLT         0x9b
+#define OPCODE_IFGE         0x9c
+#define OPCODE_IFGT         0x9d
+#define OPCODE_IFLE         0x9e
+#define OPCODE_IF_ICMPEQ    0x9f
+#define OPCODE_IF_ICMPNE    0xa0
+#define OPCODE_GOTO         0xa7
+#define OPCODE_IRETURN      0xac
 #define OPCODE_RETURN       0xb1
 
 j2me_operand_stack_t* j2me_operand_stack_create(size_t size) {
@@ -189,14 +225,28 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
             }
             break;
             
-        case OPCODE_ILOAD_0:
-        case OPCODE_ILOAD_1:
-        case OPCODE_ILOAD_2:
-        case OPCODE_ILOAD_3:
-            // 从局部变量加载到栈
-            value1 = opcode - OPCODE_ILOAD_0;
+        case OPCODE_ALOAD_0:
+        case OPCODE_ALOAD_1:
+        case OPCODE_ALOAD_2:
+        case OPCODE_ALOAD_3:
+            // 从局部变量加载引用到栈
+            value1 = opcode - OPCODE_ALOAD_0;
             if (value1 < frame->local_vars.size) {
                 result = j2me_operand_stack_push(&frame->operand_stack, frame->local_vars.variables[value1]);
+            } else {
+                result = J2ME_ERROR_INVALID_PARAMETER;
+            }
+            break;
+            
+        case OPCODE_ASTORE_0:
+        case OPCODE_ASTORE_1:
+        case OPCODE_ASTORE_2:
+        case OPCODE_ASTORE_3:
+            // 从栈存储引用到局部变量
+            value1 = opcode - OPCODE_ASTORE_0;
+            result = j2me_operand_stack_pop(&frame->operand_stack, &value2);
+            if (result == J2ME_SUCCESS && value1 < frame->local_vars.size) {
+                frame->local_vars.variables[value1] = value2;
             } else {
                 result = J2ME_ERROR_INVALID_PARAMETER;
             }
@@ -565,6 +615,76 @@ j2me_error_t j2me_interpreter_execute_batch(j2me_vm_t* vm, j2me_thread_t* thread
         
         executed++;
     }
+    
+    return result;
+}
+
+j2me_error_t j2me_interpreter_execute_method(j2me_vm_t* vm, j2me_method_t* method, void* object, void* args) {
+    if (!vm || !method) {
+        return J2ME_ERROR_INVALID_PARAMETER;
+    }
+    
+    printf("[解释器] 执行方法: %s.%s\n", 
+           method->owner_class ? method->owner_class->name : "unknown", 
+           method->name ? method->name : "unknown");
+    
+    // 检查方法是否有字节码
+    if (!method->bytecode || method->bytecode_length == 0) {
+        printf("[解释器] 方法无字节码，可能是抽象方法或本地方法\n");
+        return J2ME_SUCCESS; // 本地方法或抽象方法，直接返回成功
+    }
+    
+    // 创建栈帧
+    j2me_stack_frame_t* frame = j2me_stack_frame_create(method->max_stack, method->max_locals);
+    if (!frame) {
+        printf("[解释器] 错误: 创建栈帧失败\n");
+        return J2ME_ERROR_OUT_OF_MEMORY;
+    }
+    
+    // 设置字节码和程序计数器
+    frame->bytecode = method->bytecode;
+    frame->pc = 0;
+    frame->method_info = method;
+    
+    // 如果是实例方法，将this引用放入局部变量0
+    if (!(method->access_flags & ACC_STATIC) && object) {
+        frame->local_vars.variables[0] = (j2me_int)(uintptr_t)object;
+    }
+    
+    // TODO: 处理方法参数
+    // 这里应该根据方法描述符解析参数并放入局部变量表
+    
+    printf("[解释器] 开始执行字节码，长度: %d bytes\n", method->bytecode_length);
+    
+    // 执行字节码
+    j2me_error_t result = J2ME_SUCCESS;
+    uint32_t instruction_count = 0;
+    const uint32_t max_instructions = 10000; // 防止无限循环
+    
+    while (frame->pc < method->bytecode_length && instruction_count < max_instructions) {
+        result = execute_single_instruction(vm, frame);
+        
+        if (result != J2ME_SUCCESS) {
+            if (result == J2ME_SUCCESS) { // 方法正常返回
+                break;
+            } else {
+                printf("[解释器] 执行指令失败: %d\n", result);
+                break;
+            }
+        }
+        
+        instruction_count++;
+    }
+    
+    if (instruction_count >= max_instructions) {
+        printf("[解释器] 警告: 达到最大指令执行数限制\n");
+        result = J2ME_ERROR_RUNTIME_EXCEPTION;
+    }
+    
+    printf("[解释器] 方法执行完成，执行了 %d 条指令\n", instruction_count);
+    
+    // 清理栈帧
+    j2me_stack_frame_destroy(frame);
     
     return result;
 }
