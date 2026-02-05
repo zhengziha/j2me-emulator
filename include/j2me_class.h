@@ -156,6 +156,7 @@ struct j2me_class {
     
     // 常量池
     j2me_constant_pool_t constant_pool;
+    void* constant_cache;       // 常量池缓存 (j2me_constant_cache_t*)
     
     // 字段和方法
     uint16_t fields_count;

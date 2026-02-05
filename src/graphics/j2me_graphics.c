@@ -140,6 +140,12 @@ j2me_graphics_context_t* j2me_graphics_create_context(j2me_display_t* display, i
         return NULL;
     }
     
+    // 初始化画布为白色背景
+    SDL_SetRenderTarget(display->renderer, context->canvas);
+    SDL_SetRenderDrawColor(display->renderer, 255, 255, 255, 255);
+    SDL_RenderClear(display->renderer);
+    SDL_SetRenderTarget(display->renderer, NULL);
+    
     // 初始化默认值
     context->current_color = (j2me_color_t){0, 0, 0, 255}; // 黑色
     

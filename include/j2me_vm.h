@@ -52,6 +52,9 @@ struct j2me_vm {
     // 输入系统
     j2me_input_manager_t* input_manager; // 输入管理器
     
+    // 当前活动的Canvas对象
+    j2me_int current_canvas_ref; // 当前Canvas对象引用
+    
     // 优化解释器
     j2me_optimized_interpreter_t* optimized_interpreter; // 优化解释器实例
     

@@ -18,6 +18,8 @@ typedef struct j2me_jar_file j2me_jar_file_t;
 typedef struct j2me_jar_entry j2me_jar_entry_t;
 typedef struct j2me_midlet_suite j2me_midlet_suite_t;
 typedef struct j2me_midlet j2me_midlet_t;
+typedef struct j2me_midlet_executor j2me_midlet_executor_t;
+typedef struct j2me_midlet_instance j2me_midlet_instance_t;
 
 // JAR文件条目类型
 typedef enum {
@@ -65,6 +67,11 @@ struct j2me_midlet {
     void* main_class;                   // 主类对象
     void* display;                      // 显示对象
     bool started;                       // 是否已启动
+    
+    // 执行器和实例
+    j2me_midlet_executor_t* executor;   // MIDlet执行器
+    j2me_midlet_instance_t* instance;   // MIDlet实例
+    j2me_jar_file_t* jar_file;          // JAR文件引用
 };
 
 // MIDlet套件结构

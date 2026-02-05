@@ -34,6 +34,8 @@ struct j2me_stack_frame {
     uint32_t code_length;               // 代码长度
     j2me_stack_frame_t* previous;       // 上一个栈帧
     void* method_info;                  // 方法信息
+    j2me_int return_value;              // 方法返回值
+    bool has_return_value;              // 是否有返回值
 };
 
 // 线程结构
@@ -117,6 +119,19 @@ j2me_error_t j2me_interpreter_execute_batch(j2me_vm_t* vm, j2me_thread_t* thread
 j2me_error_t j2me_interpreter_execute_method(j2me_vm_t* vm, j2me_method_t* method, void* object, void* args);
 
 /**
+ * @brief 解析方法参数并放入局部变量表
+ * @param descriptor 方法描述符
+ * @param args 参数数组
+ * @param frame 栈帧
+ * @param local_var_index 当前局部变量索引指针
+ * @return 错误码
+ */
+j2me_error_t j2me_interpreter_parse_method_parameters(const char* descriptor, 
+                                                     void* args, 
+                                                     j2me_stack_frame_t* frame, 
+                                                     int* local_var_index);
+
+/**
  * @brief 从常量池解析方法引用
  * @param class_info 类信息
  * @param method_ref_index 方法引用索引
@@ -130,5 +145,35 @@ j2me_error_t j2me_interpreter_resolve_method_ref(j2me_class_t* class_info,
                                                  const char** class_name,
                                                  const char** method_name,
                                                  const char** descriptor);
+
+// 线程管理函数
+
+/**
+ * @brief 创建线程
+ * @param thread_id 线程ID
+ * @return 线程指针
+ */
+j2me_thread_t* j2me_thread_create(uint32_t thread_id);
+
+/**
+ * @brief 销毁线程
+ * @param thread 线程指针
+ */
+void j2me_thread_destroy(j2me_thread_t* thread);
+
+/**
+ * @brief 推入栈帧到线程
+ * @param thread 线程指针
+ * @param frame 栈帧指针
+ * @return 错误码
+ */
+j2me_error_t j2me_thread_push_frame(j2me_thread_t* thread, j2me_stack_frame_t* frame);
+
+/**
+ * @brief 从线程弹出栈帧
+ * @param thread 线程指针
+ * @return 栈帧指针
+ */
+j2me_stack_frame_t* j2me_thread_pop_frame(j2me_thread_t* thread);
 
 #endif // J2ME_INTERPRETER_H
