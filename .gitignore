@@ -1,0 +1,64 @@
+# 构建输出
+build/
+bin/
+lib/
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+
+# CMake生成的文件
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# IDE文件
+.vscode/
+.idea/
+*.vcxproj*
+*.sln
+*.suo
+*.user
+
+# 编译器生成的文件
+*.o
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+
+# 调试文件
+*.dSYM/
+core
+vgcore.*
+
+# 日志文件
+*.log
+
+# 临时文件
+*~
+*.swp
+*.tmp
+.DS_Store
+Thumbs.db
+
+# 测试输出
+test_results/
+coverage/
+
+# 文档生成
+docs/html/
+docs/latex/
+
+# 包管理
+conan.lock
+vcpkg_installed/
+
+# 性能分析
+*.prof
+gmon.out
+callgrind.out.*
