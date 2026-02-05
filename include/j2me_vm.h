@@ -20,6 +20,9 @@ typedef struct {
     bool enable_jit;            // 是否启用JIT编译
 } j2me_vm_config_t;
 
+// 前向声明
+struct j2me_native_method_registry;
+
 // 虚拟机实例
 struct j2me_vm {
     j2me_vm_state_t state;      // 虚拟机状态
@@ -36,6 +39,9 @@ struct j2me_vm {
     
     // 类加载器
     void* class_loader;         // 类加载器实例
+    
+    // 本地方法支持
+    struct j2me_native_method_registry* native_method_registry; // 本地方法注册表
     
     // 统计信息
     uint64_t instructions_executed; // 执行的指令数
