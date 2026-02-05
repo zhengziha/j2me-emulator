@@ -16,15 +16,31 @@ typedef struct {
     uint8_t r, g, b, a;
 } j2me_color_t;
 
+// 字体定义
+typedef struct {
+    int size;               // 字体大小
+    int style;              // 字体样式 (PLAIN, BOLD, ITALIC)
+    char name[64];          // 字体名称
+} j2me_font_t;
+
+// 图像定义
+typedef struct {
+    SDL_Texture* texture;   // SDL纹理
+    int width, height;      // 图像尺寸
+    bool mutable;           // 是否可变
+} j2me_image_t;
+
 // 图形上下文
 typedef struct {
     SDL_Renderer* renderer;     // SDL渲染器
     SDL_Texture* canvas;        // 画布纹理
     int width, height;          // 画布尺寸
     j2me_color_t current_color; // 当前颜色
+    j2me_font_t current_font;   // 当前字体
     int clip_x, clip_y;         // 裁剪区域
     int clip_width, clip_height;
     bool clipping_enabled;      // 是否启用裁剪
+    int translate_x, translate_y; // 坐标变换
 } j2me_graphics_context_t;
 
 // 显示系统
@@ -123,5 +139,114 @@ void j2me_graphics_clear(j2me_graphics_context_t* context);
  * @param display 显示系统
  */
 void j2me_display_refresh(j2me_display_t* display);
+
+/**
+ * @brief 绘制椭圆
+ * @param context 图形上下文
+ * @param x X坐标
+ * @param y Y坐标
+ * @param width 宽度
+ * @param height 高度
+ * @param filled 是否填充
+ */
+void j2me_graphics_draw_oval(j2me_graphics_context_t* context, int x, int y, int width, int height, bool filled);
+
+/**
+ * @brief 绘制圆弧
+ * @param context 图形上下文
+ * @param x X坐标
+ * @param y Y坐标
+ * @param width 宽度
+ * @param height 高度
+ * @param start_angle 起始角度
+ * @param arc_angle 弧度角度
+ * @param filled 是否填充
+ */
+void j2me_graphics_draw_arc(j2me_graphics_context_t* context, int x, int y, int width, int height, 
+                           int start_angle, int arc_angle, bool filled);
+
+/**
+ * @brief 绘制多边形
+ * @param context 图形上下文
+ * @param x_points X坐标数组
+ * @param y_points Y坐标数组
+ * @param num_points 点数
+ * @param filled 是否填充
+ */
+void j2me_graphics_draw_polygon(j2me_graphics_context_t* context, int* x_points, int* y_points, 
+                               int num_points, bool filled);
+
+/**
+ * @brief 绘制图像
+ * @param context 图形上下文
+ * @param image 图像
+ * @param x X坐标
+ * @param y Y坐标
+ * @param anchor 锚点
+ */
+void j2me_graphics_draw_image(j2me_graphics_context_t* context, j2me_image_t* image, 
+                             int x, int y, int anchor);
+
+/**
+ * @brief 绘制字符串
+ * @param context 图形上下文
+ * @param text 文本
+ * @param x X坐标
+ * @param y Y坐标
+ * @param anchor 锚点
+ */
+void j2me_graphics_draw_string(j2me_graphics_context_t* context, const char* text, 
+                              int x, int y, int anchor);
+
+/**
+ * @brief 设置字体
+ * @param context 图形上下文
+ * @param font 字体
+ */
+void j2me_graphics_set_font(j2me_graphics_context_t* context, j2me_font_t font);
+
+/**
+ * @brief 获取字符串宽度
+ * @param context 图形上下文
+ * @param text 文本
+ * @return 字符串宽度
+ */
+int j2me_graphics_get_string_width(j2me_graphics_context_t* context, const char* text);
+
+/**
+ * @brief 获取字体高度
+ * @param context 图形上下文
+ * @return 字体高度
+ */
+int j2me_graphics_get_font_height(j2me_graphics_context_t* context);
+
+/**
+ * @brief 设置坐标变换
+ * @param context 图形上下文
+ * @param x X偏移
+ * @param y Y偏移
+ */
+void j2me_graphics_translate(j2me_graphics_context_t* context, int x, int y);
+
+/**
+ * @brief 创建图像
+ * @param width 宽度
+ * @param height 高度
+ * @return 图像指针
+ */
+j2me_image_t* j2me_image_create(int width, int height);
+
+/**
+ * @brief 从文件加载图像
+ * @param filename 文件名
+ * @return 图像指针
+ */
+j2me_image_t* j2me_image_load(const char* filename);
+
+/**
+ * @brief 销毁图像
+ * @param image 图像
+ */
+void j2me_image_destroy(j2me_image_t* image);
 
 #endif // J2ME_GRAPHICS_H

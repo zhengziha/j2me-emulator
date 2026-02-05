@@ -116,5 +116,8 @@ j2me_error_t midp_graphics_draw_line(j2me_vm_t* vm, j2me_stack_frame_t* frame, v
 j2me_error_t midp_graphics_draw_rect(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t midp_graphics_fill_rect(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t midp_graphics_draw_string(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_draw_oval(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_fill_oval(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_draw_arc(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 
 #endif // J2ME_NATIVE_METHODS_H

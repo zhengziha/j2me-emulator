@@ -1,6 +1,8 @@
 #include "j2me_graphics.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <math.h>
 
 /**
  * @file j2me_graphics.c
@@ -116,11 +118,14 @@ j2me_graphics_context_t* j2me_graphics_create_context(j2me_display_t* display, i
     
     // 初始化默认值
     context->current_color = (j2me_color_t){0, 0, 0, 255}; // 黑色
+    context->current_font = (j2me_font_t){12, 0, "Arial"}; // 默认字体
     context->clip_x = 0;
     context->clip_y = 0;
     context->clip_width = width;
     context->clip_height = height;
     context->clipping_enabled = false;
+    context->translate_x = 0;
+    context->translate_y = 0;
     
     display->context = context;
     
@@ -225,4 +230,288 @@ void j2me_display_refresh(j2me_display_t* display) {
     }
     
     SDL_RenderPresent(display->renderer);
+}
+
+void j2me_graphics_draw_oval(j2me_graphics_context_t* context, int x, int y, int width, int height, bool filled) {
+    if (!context || !context->renderer) {
+        return;
+    }
+    
+    // 应用坐标变换
+    x += context->translate_x;
+    y += context->translate_y;
+    
+    // 简化的椭圆绘制：使用多个直线近似
+    int cx = x + width / 2;
+    int cy = y + height / 2;
+    int rx = width / 2;
+    int ry = height / 2;
+    
+    if (filled) {
+        // 填充椭圆：绘制多条水平线
+        for (int dy = -ry; dy <= ry; dy++) {
+            int dx = (int)(rx * sqrt(1.0 - (double)(dy * dy) / (ry * ry)));
+            SDL_RenderDrawLine(context->renderer, cx - dx, cy + dy, cx + dx, cy + dy);
+        }
+    } else {
+        // 椭圆轮廓：使用参数方程绘制点
+        for (int angle = 0; angle < 360; angle += 2) {
+            double rad = angle * M_PI / 180.0;
+            int px = cx + (int)(rx * cos(rad));
+            int py = cy + (int)(ry * sin(rad));
+            SDL_RenderDrawPoint(context->renderer, px, py);
+        }
+    }
+}
+
+void j2me_graphics_draw_arc(j2me_graphics_context_t* context, int x, int y, int width, int height, 
+                           int start_angle, int arc_angle, bool filled) {
+    if (!context || !context->renderer) {
+        return;
+    }
+    
+    // 应用坐标变换
+    x += context->translate_x;
+    y += context->translate_y;
+    
+    int cx = x + width / 2;
+    int cy = y + height / 2;
+    int rx = width / 2;
+    int ry = height / 2;
+    
+    int end_angle = start_angle + arc_angle;
+    
+    if (filled) {
+        // 填充扇形：从中心点绘制到弧上的点
+        for (int angle = start_angle; angle < end_angle; angle += 2) {
+            double rad = angle * M_PI / 180.0;
+            int px = cx + (int)(rx * cos(rad));
+            int py = cy + (int)(ry * sin(rad));
+            SDL_RenderDrawLine(context->renderer, cx, cy, px, py);
+        }
+    } else {
+        // 弧线：只绘制弧的轮廓
+        for (int angle = start_angle; angle < end_angle; angle += 2) {
+            double rad = angle * M_PI / 180.0;
+            int px = cx + (int)(rx * cos(rad));
+            int py = cy + (int)(ry * sin(rad));
+            SDL_RenderDrawPoint(context->renderer, px, py);
+        }
+    }
+}
+
+void j2me_graphics_draw_polygon(j2me_graphics_context_t* context, int* x_points, int* y_points, 
+                               int num_points, bool filled) {
+    if (!context || !context->renderer || !x_points || !y_points || num_points < 3) {
+        return;
+    }
+    
+    // 应用坐标变换
+    int* transformed_x = malloc(num_points * sizeof(int));
+    int* transformed_y = malloc(num_points * sizeof(int));
+    
+    for (int i = 0; i < num_points; i++) {
+        transformed_x[i] = x_points[i] + context->translate_x;
+        transformed_y[i] = y_points[i] + context->translate_y;
+    }
+    
+    if (filled) {
+        // 简化的多边形填充：使用扫描线算法的简化版本
+        // 这里使用一个简单的方法：绘制从多边形中心到各顶点的三角形
+        
+        // 计算多边形中心
+        int cx = 0, cy = 0;
+        for (int i = 0; i < num_points; i++) {
+            cx += transformed_x[i];
+            cy += transformed_y[i];
+        }
+        cx /= num_points;
+        cy /= num_points;
+        
+        // 绘制三角形扇形
+        for (int i = 0; i < num_points; i++) {
+            int next = (i + 1) % num_points;
+            
+            // 绘制三角形的三条边
+            SDL_RenderDrawLine(context->renderer, cx, cy, transformed_x[i], transformed_y[i]);
+            SDL_RenderDrawLine(context->renderer, transformed_x[i], transformed_y[i], 
+                             transformed_x[next], transformed_y[next]);
+            SDL_RenderDrawLine(context->renderer, transformed_x[next], transformed_y[next], cx, cy);
+        }
+    } else {
+        // 多边形轮廓：连接各个顶点
+        for (int i = 0; i < num_points; i++) {
+            int next = (i + 1) % num_points;
+            SDL_RenderDrawLine(context->renderer, transformed_x[i], transformed_y[i], 
+                             transformed_x[next], transformed_y[next]);
+        }
+    }
+    
+    free(transformed_x);
+    free(transformed_y);
+}
+
+void j2me_graphics_draw_string(j2me_graphics_context_t* context, const char* text, 
+                              int x, int y, int anchor) {
+    if (!context || !context->renderer || !text) {
+        return;
+    }
+    
+    // 应用坐标变换
+    x += context->translate_x;
+    y += context->translate_y;
+    
+    // 简化的文本渲染：每个字符用一个小矩形表示
+    int char_width = context->current_font.size * 0.6; // 字符宽度约为字体大小的60%
+    int char_height = context->current_font.size;
+    
+    // 处理锚点
+    int text_width = strlen(text) * char_width;
+    int text_height = char_height;
+    
+    // 根据锚点调整位置
+    if (anchor & 0x01) { // RIGHT
+        x -= text_width;
+    } else if (anchor & 0x02) { // HCENTER
+        x -= text_width / 2;
+    }
+    
+    if (anchor & 0x10) { // BOTTOM
+        y -= text_height;
+    } else if (anchor & 0x20) { // VCENTER
+        y -= text_height / 2;
+    }
+    
+    // 绘制每个字符
+    for (int i = 0; text[i] != '\0'; i++) {
+        int char_x = x + i * char_width;
+        int char_y = y;
+        
+        // 绘制字符边框
+        SDL_Rect char_rect = {char_x, char_y, char_width - 1, char_height - 1};
+        SDL_RenderDrawRect(context->renderer, &char_rect);
+        
+        // 在字符中心绘制一个点表示字符内容
+        SDL_RenderDrawPoint(context->renderer, char_x + char_width/2, char_y + char_height/2);
+    }
+}
+
+void j2me_graphics_set_font(j2me_graphics_context_t* context, j2me_font_t font) {
+    if (!context) {
+        return;
+    }
+    
+    context->current_font = font;
+}
+
+int j2me_graphics_get_string_width(j2me_graphics_context_t* context, const char* text) {
+    if (!context || !text) {
+        return 0;
+    }
+    
+    int char_width = context->current_font.size * 0.6;
+    return strlen(text) * char_width;
+}
+
+int j2me_graphics_get_font_height(j2me_graphics_context_t* context) {
+    if (!context) {
+        return 0;
+    }
+    
+    return context->current_font.size;
+}
+
+void j2me_graphics_translate(j2me_graphics_context_t* context, int x, int y) {
+    if (!context) {
+        return;
+    }
+    
+    context->translate_x += x;
+    context->translate_y += y;
+}
+
+j2me_image_t* j2me_image_create(int width, int height) {
+    j2me_image_t* image = malloc(sizeof(j2me_image_t));
+    if (!image) {
+        return NULL;
+    }
+    
+    // 这里需要一个渲染器来创建纹理，暂时返回NULL
+    // 在实际实现中，需要传入渲染器参数
+    image->texture = NULL;
+    image->width = width;
+    image->height = height;
+    image->mutable = true;
+    
+    return image;
+}
+
+j2me_image_t* j2me_image_load(const char* filename) {
+    if (!filename) {
+        return NULL;
+    }
+    
+    // 简化实现：创建一个占位符图像
+    j2me_image_t* image = malloc(sizeof(j2me_image_t));
+    if (!image) {
+        return NULL;
+    }
+    
+    image->texture = NULL;
+    image->width = 32;  // 默认尺寸
+    image->height = 32;
+    image->mutable = false;
+    
+    printf("[图形] 图像加载占位符: %s (%dx%d)\n", filename, image->width, image->height);
+    return image;
+}
+
+void j2me_image_destroy(j2me_image_t* image) {
+    if (!image) {
+        return;
+    }
+    
+    if (image->texture) {
+        SDL_DestroyTexture(image->texture);
+    }
+    
+    free(image);
+}
+
+void j2me_graphics_draw_image(j2me_graphics_context_t* context, j2me_image_t* image, 
+                             int x, int y, int anchor) {
+    if (!context || !context->renderer || !image) {
+        return;
+    }
+    
+    // 应用坐标变换
+    x += context->translate_x;
+    y += context->translate_y;
+    
+    // 处理锚点
+    if (anchor & 0x01) { // RIGHT
+        x -= image->width;
+    } else if (anchor & 0x02) { // HCENTER
+        x -= image->width / 2;
+    }
+    
+    if (anchor & 0x10) { // BOTTOM
+        y -= image->height;
+    } else if (anchor & 0x20) { // VCENTER
+        y -= image->height / 2;
+    }
+    
+    if (image->texture) {
+        // 如果有实际纹理，绘制纹理
+        SDL_Rect dst_rect = {x, y, image->width, image->height};
+        SDL_RenderCopy(context->renderer, image->texture, NULL, &dst_rect);
+    } else {
+        // 占位符：绘制一个矩形表示图像
+        SDL_Rect image_rect = {x, y, image->width, image->height};
+        SDL_RenderDrawRect(context->renderer, &image_rect);
+        
+        // 绘制对角线表示这是一个图像
+        SDL_RenderDrawLine(context->renderer, x, y, x + image->width, y + image->height);
+        SDL_RenderDrawLine(context->renderer, x + image->width, y, x, y + image->height);
+    }
 }
