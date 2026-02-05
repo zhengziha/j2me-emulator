@@ -3,6 +3,7 @@
 
 #include "j2me_types.h"
 #include "j2me_graphics.h"
+#include "j2me_input.h"
 #include <stddef.h>
 
 /**
@@ -46,6 +47,9 @@ struct j2me_vm {
     
     // 图形显示系统
     j2me_display_t* display;    // 显示系统实例
+    
+    // 输入系统
+    j2me_input_manager_t* input_manager; // 输入管理器
     
     // 统计信息
     uint64_t instructions_executed; // 执行的指令数
@@ -93,6 +97,27 @@ void j2me_vm_stop(j2me_vm_t* vm);
  * @return 错误码
  */
 j2me_error_t j2me_vm_execute_time_slice(j2me_vm_t* vm, uint32_t time_slice);
+
+/**
+ * @brief 处理输入事件
+ * @param vm 虚拟机实例
+ * @return 错误码
+ */
+j2me_error_t j2me_vm_handle_events(j2me_vm_t* vm);
+
+/**
+ * @brief 键盘事件处理回调
+ * @param event 键盘事件
+ * @param user_data 用户数据
+ */
+void j2me_vm_key_event_handler(j2me_key_event_t* event, void* user_data);
+
+/**
+ * @brief 指针事件处理回调
+ * @param event 指针事件
+ * @param user_data 用户数据
+ */
+void j2me_vm_pointer_event_handler(j2me_pointer_event_t* event, void* user_data);
 
 /**
  * @brief 获取默认虚拟机配置

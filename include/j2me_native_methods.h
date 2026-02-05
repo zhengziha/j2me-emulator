@@ -120,4 +120,11 @@ j2me_error_t midp_graphics_draw_oval(j2me_vm_t* vm, j2me_stack_frame_t* frame, v
 j2me_error_t midp_graphics_fill_oval(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t midp_graphics_draw_arc(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 
+// MIDP Canvas事件处理本地方法
+j2me_error_t midp_canvas_key_pressed(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_canvas_key_released(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_canvas_pointer_pressed(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_canvas_pointer_released(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_canvas_pointer_dragged(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
 #endif // J2ME_NATIVE_METHODS_H

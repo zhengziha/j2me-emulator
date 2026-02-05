@@ -20,44 +20,52 @@ static void init_key_mapping(j2me_input_manager_t* manager) {
         manager->sdl_to_midp_map[i] = 0;
     }
     
-    // 数字键映射
-    manager->sdl_to_midp_map[SDLK_0] = KEY_NUM0;
-    manager->sdl_to_midp_map[SDLK_1] = KEY_NUM1;
-    manager->sdl_to_midp_map[SDLK_2] = KEY_NUM2;
-    manager->sdl_to_midp_map[SDLK_3] = KEY_NUM3;
-    manager->sdl_to_midp_map[SDLK_4] = KEY_NUM4;
-    manager->sdl_to_midp_map[SDLK_5] = KEY_NUM5;
-    manager->sdl_to_midp_map[SDLK_6] = KEY_NUM6;
-    manager->sdl_to_midp_map[SDLK_7] = KEY_NUM7;
-    manager->sdl_to_midp_map[SDLK_8] = KEY_NUM8;
-    manager->sdl_to_midp_map[SDLK_9] = KEY_NUM9;
+    printf("[输入系统] 开始初始化键码映射...\n");
+    
+    // 数字键映射 - 检查键码范围
+    if (SDLK_0 < 512) manager->sdl_to_midp_map[SDLK_0] = KEY_NUM0;
+    if (SDLK_1 < 512) manager->sdl_to_midp_map[SDLK_1] = KEY_NUM1;
+    if (SDLK_2 < 512) manager->sdl_to_midp_map[SDLK_2] = KEY_NUM2;
+    if (SDLK_3 < 512) manager->sdl_to_midp_map[SDLK_3] = KEY_NUM3;
+    if (SDLK_4 < 512) manager->sdl_to_midp_map[SDLK_4] = KEY_NUM4;
+    if (SDLK_5 < 512) manager->sdl_to_midp_map[SDLK_5] = KEY_NUM5;
+    if (SDLK_6 < 512) manager->sdl_to_midp_map[SDLK_6] = KEY_NUM6;
+    if (SDLK_7 < 512) manager->sdl_to_midp_map[SDLK_7] = KEY_NUM7;
+    if (SDLK_8 < 512) manager->sdl_to_midp_map[SDLK_8] = KEY_NUM8;
+    if (SDLK_9 < 512) manager->sdl_to_midp_map[SDLK_9] = KEY_NUM9;
+    
+    printf("[输入系统] 数字键映射完成\n");
     
     // 特殊键映射
-    manager->sdl_to_midp_map[SDLK_ASTERISK] = KEY_STAR;
-    manager->sdl_to_midp_map[SDLK_HASH] = KEY_POUND;
+    if (SDLK_ASTERISK < 512) manager->sdl_to_midp_map[SDLK_ASTERISK] = KEY_STAR;
+    if (SDLK_HASH < 512) manager->sdl_to_midp_map[SDLK_HASH] = KEY_POUND;
     
     // 方向键映射
-    manager->sdl_to_midp_map[SDLK_UP] = KEY_UP;
-    manager->sdl_to_midp_map[SDLK_DOWN] = KEY_DOWN;
-    manager->sdl_to_midp_map[SDLK_LEFT] = KEY_LEFT;
-    manager->sdl_to_midp_map[SDLK_RIGHT] = KEY_RIGHT;
+    if (SDLK_UP < 512) manager->sdl_to_midp_map[SDLK_UP] = KEY_UP;
+    if (SDLK_DOWN < 512) manager->sdl_to_midp_map[SDLK_DOWN] = KEY_DOWN;
+    if (SDLK_LEFT < 512) manager->sdl_to_midp_map[SDLK_LEFT] = KEY_LEFT;
+    if (SDLK_RIGHT < 512) manager->sdl_to_midp_map[SDLK_RIGHT] = KEY_RIGHT;
+    
+    printf("[输入系统] 方向键映射完成\n");
     
     // 游戏键映射
-    manager->sdl_to_midp_map[SDLK_SPACE] = KEY_FIRE;
-    manager->sdl_to_midp_map[SDLK_RETURN] = KEY_FIRE;
-    manager->sdl_to_midp_map[SDLK_z] = KEY_GAME_A;
-    manager->sdl_to_midp_map[SDLK_x] = KEY_GAME_B;
-    manager->sdl_to_midp_map[SDLK_c] = KEY_GAME_C;
-    manager->sdl_to_midp_map[SDLK_v] = KEY_GAME_D;
+    if (SDLK_SPACE < 512) manager->sdl_to_midp_map[SDLK_SPACE] = KEY_FIRE;
+    if (SDLK_RETURN < 512) manager->sdl_to_midp_map[SDLK_RETURN] = KEY_FIRE;
+    if (SDLK_z < 512) manager->sdl_to_midp_map[SDLK_z] = KEY_GAME_A;
+    if (SDLK_x < 512) manager->sdl_to_midp_map[SDLK_x] = KEY_GAME_B;
+    if (SDLK_c < 512) manager->sdl_to_midp_map[SDLK_c] = KEY_GAME_C;
+    if (SDLK_v < 512) manager->sdl_to_midp_map[SDLK_v] = KEY_GAME_D;
     
     // 软键映射
-    manager->sdl_to_midp_map[SDLK_F1] = KEY_SOFT_LEFT;
-    manager->sdl_to_midp_map[SDLK_F2] = KEY_SOFT_RIGHT;
+    if (SDLK_F1 < 512) manager->sdl_to_midp_map[SDLK_F1] = KEY_SOFT_LEFT;
+    if (SDLK_F2 < 512) manager->sdl_to_midp_map[SDLK_F2] = KEY_SOFT_RIGHT;
     
     // 其他键映射
-    manager->sdl_to_midp_map[SDLK_ESCAPE] = KEY_END;
-    manager->sdl_to_midp_map[SDLK_BACKSPACE] = KEY_CLEAR;
-    manager->sdl_to_midp_map[SDLK_TAB] = KEY_SELECT;
+    if (SDLK_ESCAPE < 512) manager->sdl_to_midp_map[SDLK_ESCAPE] = KEY_END;
+    if (SDLK_BACKSPACE < 512) manager->sdl_to_midp_map[SDLK_BACKSPACE] = KEY_CLEAR;
+    if (SDLK_TAB < 512) manager->sdl_to_midp_map[SDLK_TAB] = KEY_SELECT;
+    
+    printf("[输入系统] 键码映射初始化完成\n");
 }
 
 j2me_input_manager_t* j2me_input_manager_create(void) {
