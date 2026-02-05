@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 /**
  * @file j2me_graphics.c
@@ -18,8 +20,28 @@ j2me_display_t* j2me_display_initialize(int width, int height, const char* title
         return NULL;
     }
     
+    // 初始化SDL2_image
+    int img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
+    if (!(IMG_Init(img_flags) & img_flags)) {
+        printf("[图形] SDL2_image初始化失败: %s\n", IMG_GetError());
+        SDL_Quit();
+        return NULL;
+    }
+    
+    // 初始化SDL2_ttf
+    if (TTF_Init() == -1) {
+        printf("[图形] SDL2_ttf初始化失败: %s\n", TTF_GetError());
+        IMG_Quit();
+        SDL_Quit();
+        return NULL;
+    }
+    
+    printf("[图形] SDL2_image和SDL2_ttf初始化成功\n");
+    
     j2me_display_t* display = (j2me_display_t*)malloc(sizeof(j2me_display_t));
     if (!display) {
+        TTF_Quit();
+        IMG_Quit();
         SDL_Quit();
         return NULL;
     }
@@ -84,6 +106,8 @@ void j2me_display_destroy(j2me_display_t* display) {
     }
     
     free(display);
+    TTF_Quit();
+    IMG_Quit();
     SDL_Quit();
     printf("[图形] 显示系统已销毁\n");
 }
@@ -118,7 +142,11 @@ j2me_graphics_context_t* j2me_graphics_create_context(j2me_display_t* display, i
     
     // 初始化默认值
     context->current_color = (j2me_color_t){0, 0, 0, 255}; // 黑色
-    context->current_font = (j2me_font_t){12, 0, "Arial"}; // 默认字体
+    
+    // 初始化默认字体
+    context->current_font = (j2me_font_t){12, 0, "Arial", NULL}; // 默认字体
+    j2me_graphics_load_default_font(context);
+    
     context->clip_x = 0;
     context->clip_y = 0;
     context->clip_width = width;
@@ -136,6 +164,11 @@ j2me_graphics_context_t* j2me_graphics_create_context(j2me_display_t* display, i
 void j2me_graphics_destroy_context(j2me_graphics_context_t* context) {
     if (!context) {
         return;
+    }
+    
+    // 释放字体资源
+    if (context->current_font.ttf_font) {
+        TTF_CloseFont(context->current_font.ttf_font);
     }
     
     if (context->canvas) {
@@ -361,7 +394,13 @@ void j2me_graphics_draw_string(j2me_graphics_context_t* context, const char* tex
     x += context->translate_x;
     y += context->translate_y;
     
-    // 简化的文本渲染：每个字符用一个小矩形表示
+    // 如果有TTF字体，使用真实的文本渲染
+    if (context->current_font.ttf_font) {
+        j2me_graphics_render_ttf_text(context, text, x, y, anchor);
+        return;
+    }
+    
+    // 回退到简化的文本渲染
     int char_width = context->current_font.size * 0.6; // 字符宽度约为字体大小的60%
     int char_height = context->current_font.size;
     
@@ -401,7 +440,17 @@ void j2me_graphics_set_font(j2me_graphics_context_t* context, j2me_font_t font) 
         return;
     }
     
+    // 释放旧字体
+    if (context->current_font.ttf_font) {
+        TTF_CloseFont(context->current_font.ttf_font);
+    }
+    
     context->current_font = font;
+    
+    // 如果新字体没有TTF对象，尝试加载
+    if (!context->current_font.ttf_font) {
+        j2me_graphics_load_font(context, font.name, font.size, font.style);
+    }
 }
 
 int j2me_graphics_get_string_width(j2me_graphics_context_t* context, const char* text) {
@@ -409,6 +458,15 @@ int j2me_graphics_get_string_width(j2me_graphics_context_t* context, const char*
         return 0;
     }
     
+    // 如果有TTF字体，使用真实的文本度量
+    if (context->current_font.ttf_font) {
+        int width, height;
+        if (TTF_SizeText(context->current_font.ttf_font, text, &width, &height) == 0) {
+            return width;
+        }
+    }
+    
+    // 回退到简化计算
     int char_width = context->current_font.size * 0.6;
     return strlen(text) * char_width;
 }
@@ -418,6 +476,12 @@ int j2me_graphics_get_font_height(j2me_graphics_context_t* context) {
         return 0;
     }
     
+    // 如果有TTF字体，使用真实的字体高度
+    if (context->current_font.ttf_font) {
+        return TTF_FontHeight(context->current_font.ttf_font);
+    }
+    
+    // 回退到简化计算
     return context->current_font.size;
 }
 
@@ -430,39 +494,142 @@ void j2me_graphics_translate(j2me_graphics_context_t* context, int x, int y) {
     context->translate_y += y;
 }
 
-j2me_image_t* j2me_image_create(int width, int height) {
+j2me_image_t* j2me_image_create(j2me_graphics_context_t* context, int width, int height) {
+    if (!context || !context->renderer || width <= 0 || height <= 0) {
+        return NULL;
+    }
+    
     j2me_image_t* image = malloc(sizeof(j2me_image_t));
     if (!image) {
         return NULL;
     }
     
-    // 这里需要一个渲染器来创建纹理，暂时返回NULL
-    // 在实际实现中，需要传入渲染器参数
-    image->texture = NULL;
+    // 创建可变纹理
+    image->texture = SDL_CreateTexture(
+        context->renderer,
+        SDL_PIXELFORMAT_RGBA8888,
+        SDL_TEXTUREACCESS_TARGET,
+        width, height
+    );
+    
+    if (!image->texture) {
+        printf("[图形] 错误: 创建图像纹理失败: %s\n", SDL_GetError());
+        free(image);
+        return NULL;
+    }
+    
     image->width = width;
     image->height = height;
     image->mutable = true;
     
+    // 初始化为透明
+    SDL_SetRenderTarget(context->renderer, image->texture);
+    SDL_SetRenderDrawColor(context->renderer, 0, 0, 0, 0);
+    SDL_RenderClear(context->renderer);
+    SDL_SetRenderTarget(context->renderer, NULL);
+    
+    printf("[图形] 创建可变图像: %dx%d\n", width, height);
     return image;
 }
 
-j2me_image_t* j2me_image_load(const char* filename) {
-    if (!filename) {
+j2me_image_t* j2me_image_load(j2me_graphics_context_t* context, const char* filename) {
+    if (!context || !context->renderer || !filename) {
         return NULL;
     }
     
-    // 简化实现：创建一个占位符图像
+    printf("[图形] 开始加载图像: %s\n", filename);
+    
+    // 使用SDL2_image加载图像
+    SDL_Surface* surface = IMG_Load(filename);
+    if (!surface) {
+        printf("[图形] 错误: 无法加载图像文件 %s: %s\n", filename, IMG_GetError());
+        
+        // 创建占位符图像
+        j2me_image_t* placeholder = j2me_image_create(context, 32, 32);
+        if (placeholder) {
+            printf("[图形] 创建占位符图像: %s (32x32)\n", filename);
+        }
+        return placeholder;
+    }
+    
+    printf("[图形] 图像表面加载成功: %dx%d, 格式=%s\n", 
+           surface->w, surface->h, SDL_GetPixelFormatName(surface->format->format));
+    
+    // 创建纹理
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(context->renderer, surface);
+    if (!texture) {
+        printf("[图形] 错误: 创建纹理失败: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return NULL;
+    }
+    
+    // 创建图像对象
     j2me_image_t* image = malloc(sizeof(j2me_image_t));
     if (!image) {
+        SDL_DestroyTexture(texture);
+        SDL_FreeSurface(surface);
         return NULL;
     }
     
-    image->texture = NULL;
-    image->width = 32;  // 默认尺寸
-    image->height = 32;
+    image->texture = texture;
+    image->width = surface->w;
+    image->height = surface->h;
     image->mutable = false;
     
-    printf("[图形] 图像加载占位符: %s (%dx%d)\n", filename, image->width, image->height);
+    SDL_FreeSurface(surface);
+    
+    printf("[图形] 图像加载成功: %s (%dx%d)\n", filename, image->width, image->height);
+    return image;
+}
+
+j2me_image_t* j2me_image_create_from_data(j2me_graphics_context_t* context, 
+                                          const uint8_t* data, size_t data_size) {
+    if (!context || !context->renderer || !data || data_size == 0) {
+        return NULL;
+    }
+    
+    printf("[图形] 从内存数据创建图像，大小: %zu bytes\n", data_size);
+    
+    // 创建SDL_RWops从内存数据
+    SDL_RWops* rw = SDL_RWFromConstMem(data, (int)data_size);
+    if (!rw) {
+        printf("[图形] 错误: 创建RWops失败: %s\n", SDL_GetError());
+        return NULL;
+    }
+    
+    // 使用SDL2_image从内存加载
+    SDL_Surface* surface = IMG_Load_RW(rw, 1); // 1表示自动关闭RWops
+    if (!surface) {
+        printf("[图形] 错误: 从内存加载图像失败: %s\n", IMG_GetError());
+        return NULL;
+    }
+    
+    printf("[图形] 从内存加载图像成功: %dx%d\n", surface->w, surface->h);
+    
+    // 创建纹理
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(context->renderer, surface);
+    if (!texture) {
+        printf("[图形] 错误: 创建纹理失败: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface);
+        return NULL;
+    }
+    
+    // 创建图像对象
+    j2me_image_t* image = malloc(sizeof(j2me_image_t));
+    if (!image) {
+        SDL_DestroyTexture(texture);
+        SDL_FreeSurface(surface);
+        return NULL;
+    }
+    
+    image->texture = texture;
+    image->width = surface->w;
+    image->height = surface->h;
+    image->mutable = false;
+    
+    SDL_FreeSurface(surface);
+    
+    printf("[图形] 从内存创建图像成功: %dx%d\n", image->width, image->height);
     return image;
 }
 
@@ -514,4 +681,275 @@ void j2me_graphics_draw_image(j2me_graphics_context_t* context, j2me_image_t* im
         SDL_RenderDrawLine(context->renderer, x, y, x + image->width, y + image->height);
         SDL_RenderDrawLine(context->renderer, x + image->width, y, x, y + image->height);
     }
+}
+
+/**
+ * @brief 加载默认字体
+ * @param context 图形上下文
+ */
+void j2me_graphics_load_default_font(j2me_graphics_context_t* context) {
+    if (!context) {
+        return;
+    }
+    
+    // 尝试加载系统默认字体
+    const char* font_paths[] = {
+        // macOS系统字体
+        "/System/Library/Fonts/HelveticaNeue.ttc",
+        "/System/Library/Fonts/Geneva.ttf",
+        "/System/Library/Fonts/Menlo.ttc",
+        "/System/Library/Fonts/Symbol.ttf",
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        // Linux系统字体
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/TTF/arial.ttf",
+        // Windows系统字体 (如果在Wine环境下)
+        "/usr/share/fonts/truetype/msttcorefonts/arial.ttf",
+        NULL
+    };
+    
+    for (int i = 0; font_paths[i] != NULL; i++) {
+        TTF_Font* font = TTF_OpenFont(font_paths[i], context->current_font.size);
+        if (font) {
+            context->current_font.ttf_font = font;
+            strncpy(context->current_font.name, "Default", sizeof(context->current_font.name) - 1);
+            printf("[图形] 加载默认字体成功: %s (大小: %d)\n", 
+                   font_paths[i], context->current_font.size);
+            return;
+        }
+    }
+    
+    printf("[图形] 警告: 无法加载TTF字体，将使用简化文本渲染\n");
+}
+
+/**
+ * @brief 加载指定字体
+ * @param context 图形上下文
+ * @param font_name 字体名称
+ * @param size 字体大小
+ * @param style 字体样式
+ * @return 是否成功
+ */
+bool j2me_graphics_load_font(j2me_graphics_context_t* context, const char* font_name, 
+                            int size, int style) {
+    if (!context || !font_name) {
+        return false;
+    }
+    
+    // 构建字体文件路径
+    char font_path[256];
+    
+    // 尝试不同的字体路径
+    const char* font_dirs[] = {
+        "/System/Library/Fonts/",           // macOS
+        "/usr/share/fonts/truetype/dejavu/", // Linux
+        "/usr/share/fonts/TTF/",            // Linux
+        "/usr/share/fonts/truetype/liberation/", // Linux
+        NULL
+    };
+    
+    const char* font_extensions[] = {".ttf", ".ttc", ".otf", NULL};
+    
+    // 首先尝试直接匹配已知的字体文件
+    const char* known_fonts[] = {
+        "/System/Library/Fonts/HelveticaNeue.ttc",
+        "/System/Library/Fonts/Geneva.ttf", 
+        "/System/Library/Fonts/Menlo.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        NULL
+    };
+    
+    // 先尝试已知字体
+    for (int k = 0; known_fonts[k] != NULL; k++) {
+        TTF_Font* font = TTF_OpenFont(known_fonts[k], size);
+        if (font) {
+            // 释放旧字体
+            if (context->current_font.ttf_font) {
+                TTF_CloseFont(context->current_font.ttf_font);
+            }
+            
+            context->current_font.ttf_font = font;
+            context->current_font.size = size;
+            context->current_font.style = style;
+            strncpy(context->current_font.name, font_name, 
+                    sizeof(context->current_font.name) - 1);
+            
+            // 设置字体样式
+            int ttf_style = TTF_STYLE_NORMAL;
+            if (style & 0x01) ttf_style |= TTF_STYLE_BOLD;      // BOLD
+            if (style & 0x02) ttf_style |= TTF_STYLE_ITALIC;    // ITALIC
+            if (style & 0x04) ttf_style |= TTF_STYLE_UNDERLINE; // UNDERLINE
+            TTF_SetFontStyle(font, ttf_style);
+            
+            printf("[图形] 加载已知字体成功: %s (大小: %d, 样式: %d)\n", 
+                   known_fonts[k], size, style);
+            return true;
+        }
+    }
+    
+    for (int i = 0; font_dirs[i] != NULL; i++) {
+        for (int j = 0; font_extensions[j] != NULL; j++) {
+            snprintf(font_path, sizeof(font_path), "%s%s%s", 
+                     font_dirs[i], font_name, font_extensions[j]);
+            
+            TTF_Font* font = TTF_OpenFont(font_path, size);
+            if (font) {
+                // 释放旧字体
+                if (context->current_font.ttf_font) {
+                    TTF_CloseFont(context->current_font.ttf_font);
+                }
+                
+                context->current_font.ttf_font = font;
+                context->current_font.size = size;
+                context->current_font.style = style;
+                strncpy(context->current_font.name, font_name, 
+                        sizeof(context->current_font.name) - 1);
+                
+                // 设置字体样式
+                int ttf_style = TTF_STYLE_NORMAL;
+                if (style & 0x01) ttf_style |= TTF_STYLE_BOLD;      // BOLD
+                if (style & 0x02) ttf_style |= TTF_STYLE_ITALIC;    // ITALIC
+                if (style & 0x04) ttf_style |= TTF_STYLE_UNDERLINE; // UNDERLINE
+                TTF_SetFontStyle(font, ttf_style);
+                
+                printf("[图形] 加载字体成功: %s (大小: %d, 样式: %d)\n", 
+                       font_path, size, style);
+                return true;
+            }
+        }
+    }
+    
+    printf("[图形] 警告: 无法加载字体 %s，保持当前字体\n", font_name);
+    return false;
+}
+
+/**
+ * @brief 使用TTF字体渲染文本
+ * @param context 图形上下文
+ * @param text 文本内容
+ * @param x X坐标
+ * @param y Y坐标
+ * @param anchor 锚点
+ */
+void j2me_graphics_render_ttf_text(j2me_graphics_context_t* context, const char* text, 
+                                  int x, int y, int anchor) {
+    if (!context || !context->renderer || !text || !context->current_font.ttf_font) {
+        return;
+    }
+    
+    // 创建文本表面
+    SDL_Color color = {
+        context->current_color.r,
+        context->current_color.g,
+        context->current_color.b,
+        context->current_color.a
+    };
+    
+    SDL_Surface* text_surface = TTF_RenderText_Blended(context->current_font.ttf_font, text, color);
+    if (!text_surface) {
+        printf("[图形] 错误: 创建文本表面失败: %s\n", TTF_GetError());
+        return;
+    }
+    
+    // 创建纹理
+    SDL_Texture* text_texture = SDL_CreateTextureFromSurface(context->renderer, text_surface);
+    if (!text_texture) {
+        printf("[图形] 错误: 创建文本纹理失败: %s\n", SDL_GetError());
+        SDL_FreeSurface(text_surface);
+        return;
+    }
+    
+    // 获取文本尺寸
+    int text_width = text_surface->w;
+    int text_height = text_surface->h;
+    
+    SDL_FreeSurface(text_surface);
+    
+    // 处理锚点
+    if (anchor & 0x01) { // RIGHT
+        x -= text_width;
+    } else if (anchor & 0x02) { // HCENTER
+        x -= text_width / 2;
+    }
+    
+    if (anchor & 0x10) { // BOTTOM
+        y -= text_height;
+    } else if (anchor & 0x20) { // VCENTER
+        y -= text_height / 2;
+    }
+    
+    // 渲染文本
+    SDL_Rect dst_rect = {x, y, text_width, text_height};
+    SDL_RenderCopy(context->renderer, text_texture, NULL, &dst_rect);
+    
+    // 清理资源
+    SDL_DestroyTexture(text_texture);
+}
+
+/**
+ * @brief 创建字体对象
+ * @param name 字体名称
+ * @param size 字体大小
+ * @param style 字体样式
+ * @return 字体对象
+ */
+j2me_font_t j2me_graphics_create_font(const char* name, int size, int style) {
+    j2me_font_t font;
+    font.size = size;
+    font.style = style;
+    font.ttf_font = NULL;
+    
+    if (name) {
+        strncpy(font.name, name, sizeof(font.name) - 1);
+        font.name[sizeof(font.name) - 1] = '\0';
+    } else {
+        strcpy(font.name, "Default");
+    }
+    
+    return font;
+}
+
+/**
+ * @brief 获取字体基线
+ * @param context 图形上下文
+ * @return 基线位置
+ */
+int j2me_graphics_get_font_baseline(j2me_graphics_context_t* context) {
+    if (!context) {
+        return 0;
+    }
+    
+    if (context->current_font.ttf_font) {
+        // TTF字体的基线计算
+        int ascent = TTF_FontAscent(context->current_font.ttf_font);
+        return ascent;
+    }
+    
+    // 简化计算：约为字体高度的75%
+    return context->current_font.size * 3 / 4;
+}
+
+/**
+ * @brief 获取字符宽度
+ * @param context 图形上下文
+ * @param ch 字符
+ * @return 字符宽度
+ */
+int j2me_graphics_get_char_width(j2me_graphics_context_t* context, char ch) {
+    if (!context) {
+        return 0;
+    }
+    
+    if (context->current_font.ttf_font) {
+        char str[2] = {ch, '\0'};
+        int width, height;
+        if (TTF_SizeText(context->current_font.ttf_font, str, &width, &height) == 0) {
+            return width;
+        }
+    }
+    
+    // 简化计算
+    return context->current_font.size * 0.6;
 }

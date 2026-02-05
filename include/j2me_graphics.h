@@ -3,6 +3,7 @@
 
 #include "j2me_types.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 /**
  * @file j2me_graphics.h
@@ -21,6 +22,7 @@ typedef struct {
     int size;               // 字体大小
     int style;              // 字体样式 (PLAIN, BOLD, ITALIC)
     char name[64];          // 字体名称
+    TTF_Font* ttf_font;     // SDL_ttf字体对象
 } j2me_font_t;
 
 // 图像定义
@@ -230,23 +232,87 @@ void j2me_graphics_translate(j2me_graphics_context_t* context, int x, int y);
 
 /**
  * @brief 创建图像
+ * @param context 图形上下文
  * @param width 宽度
  * @param height 高度
  * @return 图像指针
  */
-j2me_image_t* j2me_image_create(int width, int height);
+j2me_image_t* j2me_image_create(j2me_graphics_context_t* context, int width, int height);
 
 /**
  * @brief 从文件加载图像
+ * @param context 图形上下文
  * @param filename 文件名
  * @return 图像指针
  */
-j2me_image_t* j2me_image_load(const char* filename);
+j2me_image_t* j2me_image_load(j2me_graphics_context_t* context, const char* filename);
+
+/**
+ * @brief 从内存数据创建图像
+ * @param context 图形上下文
+ * @param data 图像数据
+ * @param data_size 数据大小
+ * @return 图像指针
+ */
+j2me_image_t* j2me_image_create_from_data(j2me_graphics_context_t* context, 
+                                          const uint8_t* data, size_t data_size);
 
 /**
  * @brief 销毁图像
  * @param image 图像
  */
 void j2me_image_destroy(j2me_image_t* image);
+
+/**
+ * @brief 加载默认字体
+ * @param context 图形上下文
+ */
+void j2me_graphics_load_default_font(j2me_graphics_context_t* context);
+
+/**
+ * @brief 加载指定字体
+ * @param context 图形上下文
+ * @param font_name 字体名称
+ * @param size 字体大小
+ * @param style 字体样式
+ * @return 是否成功
+ */
+bool j2me_graphics_load_font(j2me_graphics_context_t* context, const char* font_name, 
+                            int size, int style);
+
+/**
+ * @brief 使用TTF字体渲染文本
+ * @param context 图形上下文
+ * @param text 文本内容
+ * @param x X坐标
+ * @param y Y坐标
+ * @param anchor 锚点
+ */
+void j2me_graphics_render_ttf_text(j2me_graphics_context_t* context, const char* text, 
+                                  int x, int y, int anchor);
+
+/**
+ * @brief 创建字体对象
+ * @param name 字体名称
+ * @param size 字体大小
+ * @param style 字体样式
+ * @return 字体对象
+ */
+j2me_font_t j2me_graphics_create_font(const char* name, int size, int style);
+
+/**
+ * @brief 获取字体基线
+ * @param context 图形上下文
+ * @return 基线位置
+ */
+int j2me_graphics_get_font_baseline(j2me_graphics_context_t* context);
+
+/**
+ * @brief 获取字符宽度
+ * @param context 图形上下文
+ * @param ch 字符
+ * @return 字符宽度
+ */
+int j2me_graphics_get_char_width(j2me_graphics_context_t* context, char ch);
 
 #endif // J2ME_GRAPHICS_H

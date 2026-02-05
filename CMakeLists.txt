@@ -20,6 +20,12 @@ find_package(SDL2 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
 
+# 查找SDL2_image (用于图像)
+pkg_check_modules(SDL2_IMAGE REQUIRED SDL2_image)
+
+# 查找SDL2_ttf (用于字体)
+pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf)
+
 # 查找libcurl (用于网络)
 pkg_check_modules(LIBCURL REQUIRED libcurl)
 
@@ -30,6 +36,8 @@ find_package(ZLIB REQUIRED)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${SDL2_INCLUDE_DIRS})
 include_directories(${SDL2_MIXER_INCLUDE_DIRS})
+include_directories(${SDL2_IMAGE_INCLUDE_DIRS})
+include_directories(${SDL2_TTF_INCLUDE_DIRS})
 include_directories(${LIBCURL_INCLUDE_DIRS})
 include_directories(${ZLIB_INCLUDE_DIRS})
 
@@ -51,9 +59,13 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 # 链接库
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${SDL2_MIXER_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${SDL2_IMAGE_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${SDL2_TTF_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${LIBCURL_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARIES})
 target_link_directories(${PROJECT_NAME} PRIVATE ${SDL2_MIXER_LIBRARY_DIRS})
+target_link_directories(${PROJECT_NAME} PRIVATE ${SDL2_IMAGE_LIBRARY_DIRS})
+target_link_directories(${PROJECT_NAME} PRIVATE ${SDL2_TTF_LIBRARY_DIRS})
 target_link_directories(${PROJECT_NAME} PRIVATE ${LIBCURL_LIBRARY_DIRS})
 
 # 链接数学库 (如果找到)

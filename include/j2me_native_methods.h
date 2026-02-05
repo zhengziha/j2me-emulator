@@ -127,4 +127,11 @@ j2me_error_t midp_canvas_pointer_pressed(j2me_vm_t* vm, j2me_stack_frame_t* fram
 j2me_error_t midp_canvas_pointer_released(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t midp_canvas_pointer_dragged(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 
+// MIDP Image类本地方法
+j2me_error_t midp_image_create_image(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_image_create_image_from_file(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_image_get_width(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_image_get_height(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_draw_image(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
 #endif // J2ME_NATIVE_METHODS_H
