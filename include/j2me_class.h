@@ -33,21 +33,6 @@ typedef struct j2me_class_loader j2me_class_loader_t;
 #define ACC_ABSTRACT    0x0400
 #define ACC_STRICT      0x0800
 
-// 常量池类型
-typedef enum {
-    CONSTANT_Utf8 = 1,
-    CONSTANT_Integer = 3,
-    CONSTANT_Float = 4,
-    CONSTANT_Long = 5,
-    CONSTANT_Double = 6,
-    CONSTANT_Class = 7,
-    CONSTANT_String = 8,
-    CONSTANT_Fieldref = 9,
-    CONSTANT_Methodref = 10,
-    CONSTANT_InterfaceMethodref = 11,
-    CONSTANT_NameAndType = 12
-} j2me_constant_type_t;
-
 // 常量池条目
 typedef struct {
     j2me_constant_type_t tag;

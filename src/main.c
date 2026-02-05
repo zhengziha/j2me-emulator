@@ -121,12 +121,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    // 初始化虚拟机
+    // 将display设置到虚拟机中，避免重复创建
+    vm->display = display;
+    
+    // 初始化虚拟机（但跳过display创建，因为我们已经设置了）
     j2me_error_t vm_result = j2me_vm_initialize(vm);
     if (vm_result != J2ME_SUCCESS) {
         printf("错误: 虚拟机初始化失败 (错误码: %d)\n", vm_result);
         j2me_vm_destroy(vm);
-        j2me_display_destroy(display);
         return 1;
     }
     
@@ -301,6 +303,20 @@ int main(int argc, char* argv[]) {
                     
                     j2me_stack_frame_destroy(frame);
                 }
+                
+                // 每隔几帧也调用一次serviceRepaints
+                static int service_counter = 0;
+                service_counter++;
+                if (service_counter % 5 == 0) { // 每5帧调用一次
+                    j2me_stack_frame_t* service_frame = j2me_stack_frame_create(10, 5);
+                    if (service_frame) {
+                        j2me_operand_stack_push(&service_frame->operand_stack, vm->current_canvas_ref);
+                        
+                        midp_canvas_service_repaints(vm, service_frame, NULL);
+                        
+                        j2me_stack_frame_destroy(service_frame);
+                    }
+                }
             }
             
             last_time = current_time;
@@ -323,9 +339,9 @@ int main(int argc, char* argv[]) {
         j2me_jar_close(jar_file);
     }
     
-    // 清理资源
+    // 清理资源 - 注意：j2me_vm_destroy会自动清理display，所以不需要单独清理
     j2me_vm_destroy(vm);
-    j2me_display_destroy(display);
+    // j2me_display_destroy(display); // 已经在j2me_vm_destroy中清理了
     
     printf("👋 再见！\n");
     return 0;

@@ -3,6 +3,7 @@
 
 #include "j2me_types.h"
 #include "j2me_class.h"
+#include "j2me_object.h"
 
 /**
  * @file j2me_constant_pool.h
@@ -10,11 +11,6 @@
  * 
  * 提供完整的常量池解析、缓存和访问功能
  */
-
-// 前向声明
-typedef struct j2me_vm j2me_vm_t;
-typedef struct j2me_class j2me_class_t;
-typedef struct j2me_object j2me_object_t;
 
 // 常量值联合体
 typedef struct {

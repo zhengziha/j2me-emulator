@@ -3,6 +3,7 @@
 
 #include "j2me_types.h"
 #include "j2me_class.h"
+#include "j2me_exception.h"
 #include <stddef.h>
 
 /**
@@ -38,6 +39,8 @@ struct j2me_stack_frame {
     bool has_return_value;              // 是否有返回值
 };
 
+// 前向声明
+
 // 线程结构
 struct j2me_thread {
     j2me_stack_frame_t* current_frame;  // 当前栈帧
@@ -46,6 +49,7 @@ struct j2me_thread {
     j2me_thread_t* next;                // 下一个线程
     uint32_t thread_id;                 // 线程ID
     bool is_running;                    // 是否运行中
+    j2me_exception_t* current_exception; // 当前异常
 };
 
 /**
