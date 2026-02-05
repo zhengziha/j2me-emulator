@@ -3,9 +3,8 @@
 
 #include "j2me_types.h"
 #include "j2me_object.h"
-// 简化实现：不依赖SDL
-// #include <SDL2/SDL.h>
-// #include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 
 /**
  * @file j2me_audio.h
@@ -47,8 +46,8 @@ struct j2me_audio_clip {
     int sample_rate;                // 采样率
     int channels;                   // 声道数
     int bits_per_sample;            // 位深度
-    void* sdl_chunk;                // SDL音频块 (简化为void*)
-    void* sdl_music;                // SDL音乐 (简化为void*)
+    Mix_Chunk* sdl_chunk;           // SDL音频块
+    Mix_Music* sdl_music;           // SDL音乐 (用于MIDI等)
 };
 
 // 播放器结构
@@ -79,9 +78,9 @@ struct j2me_audio_manager {
     int master_volume;              // 主音量 (0-100)
     bool master_muted;              // 主静音
     
-    // SDL Mixer设置 (简化)
+    // SDL Mixer设置
     int frequency;                  // 音频频率
-    int format;                     // 音频格式 (简化为int)
+    Uint16 format;                  // 音频格式
     int channels;                   // 声道数
     int chunk_size;                 // 缓冲区大小
 };

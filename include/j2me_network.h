@@ -70,6 +70,10 @@ struct j2me_connection {
     int port;                           // 端口号
     char* path;                         // 路径
     
+    // 管理器引用
+    j2me_network_manager_t* manager;    // 所属管理器
+    int slot_index;                     // 在管理器中的槽位索引
+    
     // HTTP特定字段
     j2me_http_method_t http_method;     // HTTP方法
     int response_code;                  // 响应码

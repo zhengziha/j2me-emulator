@@ -20,10 +20,14 @@ find_package(SDL2 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
 
+# 查找libcurl (用于网络)
+pkg_check_modules(LIBCURL REQUIRED libcurl)
+
 # 包含目录
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${SDL2_INCLUDE_DIRS})
 include_directories(${SDL2_MIXER_INCLUDE_DIRS})
+include_directories(${LIBCURL_INCLUDE_DIRS})
 
 # 添加数学库链接 (用于图形计算)
 find_library(MATH_LIBRARY m)
@@ -43,7 +47,9 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 # 链接库
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${SDL2_MIXER_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${LIBCURL_LIBRARIES})
 target_link_directories(${PROJECT_NAME} PRIVATE ${SDL2_MIXER_LIBRARY_DIRS})
+target_link_directories(${PROJECT_NAME} PRIVATE ${LIBCURL_LIBRARY_DIRS})
 
 # 链接数学库 (如果找到)
 if(MATH_LIBRARY)
