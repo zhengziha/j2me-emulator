@@ -31,6 +31,7 @@ struct j2me_stack_frame {
     j2me_local_vars_t local_vars;       // 局部变量表
     uint8_t* bytecode;                  // 字节码指针
     uint32_t pc;                        // 程序计数器
+    uint32_t code_length;               // 代码长度
     j2me_stack_frame_t* previous;       // 上一个栈帧
     void* method_info;                  // 方法信息
 };

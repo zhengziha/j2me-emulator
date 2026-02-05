@@ -4,6 +4,7 @@
 #include "j2me_types.h"
 #include "j2me_graphics.h"
 #include "j2me_input.h"
+#include "j2me_interpreter_optimized.h"
 #include <stddef.h>
 
 /**
@@ -50,6 +51,9 @@ struct j2me_vm {
     
     // 输入系统
     j2me_input_manager_t* input_manager; // 输入管理器
+    
+    // 优化解释器
+    j2me_optimized_interpreter_t* optimized_interpreter; // 优化解释器实例
     
     // 统计信息
     uint64_t instructions_executed; // 执行的指令数
