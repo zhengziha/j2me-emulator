@@ -16,7 +16,6 @@
 typedef struct j2me_object j2me_object_t;
 typedef struct j2me_array j2me_array_t;
 typedef struct j2me_string j2me_string_t;
-typedef struct j2me_gc j2me_gc_t;
 
 // 对象头标志
 #define OBJECT_FLAG_MARKED      0x01    // GC标记

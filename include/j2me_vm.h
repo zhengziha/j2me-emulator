@@ -5,6 +5,7 @@
 #include "j2me_graphics.h"
 #include "j2me_input.h"
 #include "j2me_interpreter_optimized.h"
+#include "j2me_gc.h"
 #include <stddef.h>
 
 /**
@@ -35,6 +36,7 @@ struct j2me_vm {
     void* heap_start;           // 堆起始地址
     void* heap_end;             // 堆结束地址
     void* heap_current;         // 当前堆指针
+    j2me_gc_t* gc;              // 垃圾回收器
     
     // 线程管理
     j2me_thread_t* main_thread; // 主线程
