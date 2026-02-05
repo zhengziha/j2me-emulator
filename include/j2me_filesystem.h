@@ -4,6 +4,9 @@
 #include "j2me_types.h"
 #include "j2me_object.h"
 #include <stdio.h>
+#include <sys/types.h>
+#include <pthread.h>
+#include <zlib.h>
 
 /**
  * @file j2me_filesystem.h
@@ -15,6 +18,31 @@
 // 前向声明
 typedef struct j2me_filesystem_manager j2me_filesystem_manager_t;
 typedef struct j2me_file_connection j2me_file_connection_t;
+
+// 文件锁类型
+typedef enum {
+    FILE_LOCK_NONE = 0,
+    FILE_LOCK_SHARED,           // 共享锁 (读锁)
+    FILE_LOCK_EXCLUSIVE         // 排他锁 (写锁)
+} j2me_file_lock_type_t;
+
+// 文件事件类型
+typedef enum {
+    FILE_EVENT_CREATED = 1,
+    FILE_EVENT_MODIFIED = 2,
+    FILE_EVENT_DELETED = 4,
+    FILE_EVENT_MOVED = 8
+} j2me_file_event_type_t;
+
+// 压缩类型
+typedef enum {
+    COMPRESSION_NONE = 0,
+    COMPRESSION_GZIP,
+    COMPRESSION_ZIP
+} j2me_compression_type_t;
+
+// 文件事件回调函数
+typedef void (*j2me_file_event_callback_t)(const char* path, j2me_file_event_type_t event, void* user_data);
 
 // 文件类型
 typedef enum {
@@ -49,6 +77,13 @@ typedef struct {
     bool writable;                  // 是否可写
     bool executable;                // 是否可执行
     bool hidden;                    // 是否隐藏
+    
+    // 高级属性
+    j2me_file_lock_type_t lock_type; // 锁类型
+    j2me_compression_type_t compression; // 压缩类型
+    mode_t permissions;             // POSIX权限
+    uid_t owner_uid;                // 拥有者用户ID
+    gid_t owner_gid;                // 拥有者组ID
 } j2me_file_info_t;
 
 // 文件连接结构
@@ -59,6 +94,7 @@ struct j2me_file_connection {
     char* url;                          // 文件URL
     char* path;                         // 本地路径
     FILE* file_handle;                  // 文件句柄
+    int fd;                             // 文件描述符 (用于锁定)
     j2me_file_info_t info;              // 文件信息
     
     // 目录遍历
@@ -66,6 +102,11 @@ struct j2me_file_connection {
     char** file_list;                   // 文件列表
     int file_count;                     // 文件数量
     int current_index;                  // 当前索引
+    
+    // 高级功能
+    j2me_file_lock_type_t lock_type;    // 当前锁类型
+    bool compressed;                    // 是否压缩
+    z_stream* compression_stream;       // 压缩流
 };
 
 // 文件系统管理器
@@ -79,6 +120,13 @@ struct j2me_filesystem_manager {
     char** allowed_roots;               // 允许的根目录
     int root_count;                     // 根目录数量
     bool security_enabled;              // 是否启用安全检查
+    
+    // 高级功能
+    void* file_locks;                   // 文件锁数组
+    int lock_count;                     // 锁数量
+    void* file_monitors;                // 文件监控数组
+    int monitor_count;                  // 监控数量
+    pthread_mutex_t lock_mutex;         // 锁管理互斥量
     
     // 统计信息
     size_t bytes_read;                  // 读取字节数
@@ -429,5 +477,130 @@ void j2me_filesystem_update(j2me_filesystem_manager_t* manager);
  * @param manager 文件系统管理器
  */
 void j2me_filesystem_close_all(j2me_filesystem_manager_t* manager);
+
+// 高级功能 - 文件锁定
+
+/**
+ * @brief 锁定文件
+ * @param connection 文件连接
+ * @param lock_type 锁类型
+ * @return 错误码
+ */
+j2me_error_t j2me_file_lock(j2me_file_connection_t* connection, j2me_file_lock_type_t lock_type);
+
+/**
+ * @brief 解锁文件
+ * @param connection 文件连接
+ * @return 错误码
+ */
+j2me_error_t j2me_file_unlock(j2me_file_connection_t* connection);
+
+/**
+ * @brief 检查文件是否被锁定
+ * @param connection 文件连接
+ * @return 锁类型
+ */
+j2me_file_lock_type_t j2me_file_get_lock_type(j2me_file_connection_t* connection);
+
+// 高级功能 - 文件压缩
+
+/**
+ * @brief 启用文件压缩
+ * @param connection 文件连接
+ * @param compression_type 压缩类型
+ * @return 错误码
+ */
+j2me_error_t j2me_file_enable_compression(j2me_file_connection_t* connection, 
+                                          j2me_compression_type_t compression_type);
+
+/**
+ * @brief 禁用文件压缩
+ * @param connection 文件连接
+ * @return 错误码
+ */
+j2me_error_t j2me_file_disable_compression(j2me_file_connection_t* connection);
+
+/**
+ * @brief 压缩文件
+ * @param source_path 源文件路径
+ * @param dest_path 目标文件路径
+ * @param compression_type 压缩类型
+ * @return 错误码
+ */
+j2me_error_t j2me_file_compress(const char* source_path, const char* dest_path, 
+                                j2me_compression_type_t compression_type);
+
+/**
+ * @brief 解压文件
+ * @param source_path 源文件路径
+ * @param dest_path 目标文件路径
+ * @return 错误码
+ */
+j2me_error_t j2me_file_decompress(const char* source_path, const char* dest_path);
+
+// 高级功能 - 文件监控
+
+/**
+ * @brief 添加文件监控
+ * @param manager 文件系统管理器
+ * @param path 监控路径
+ * @param events 监控事件类型
+ * @param callback 回调函数
+ * @param user_data 用户数据
+ * @return 错误码
+ */
+j2me_error_t j2me_filesystem_add_monitor(j2me_filesystem_manager_t* manager,
+                                         const char* path, int events,
+                                         j2me_file_event_callback_t callback,
+                                         void* user_data);
+
+/**
+ * @brief 移除文件监控
+ * @param manager 文件系统管理器
+ * @param path 监控路径
+ * @return 错误码
+ */
+j2me_error_t j2me_filesystem_remove_monitor(j2me_filesystem_manager_t* manager, const char* path);
+
+// 高级功能 - 扩展属性
+
+/**
+ * @brief 设置文件扩展属性
+ * @param connection 文件连接
+ * @param name 属性名
+ * @param value 属性值
+ * @param size 值大小
+ * @return 错误码
+ */
+j2me_error_t j2me_file_set_attribute(j2me_file_connection_t* connection,
+                                     const char* name, const void* value, size_t size);
+
+/**
+ * @brief 获取文件扩展属性
+ * @param connection 文件连接
+ * @param name 属性名
+ * @param value 属性值缓冲区
+ * @param size 缓冲区大小
+ * @return 实际属性值大小，-1表示错误
+ */
+ssize_t j2me_file_get_attribute(j2me_file_connection_t* connection,
+                                const char* name, void* value, size_t size);
+
+/**
+ * @brief 删除文件扩展属性
+ * @param connection 文件连接
+ * @param name 属性名
+ * @return 错误码
+ */
+j2me_error_t j2me_file_remove_attribute(j2me_file_connection_t* connection, const char* name);
+
+/**
+ * @brief 列出文件扩展属性
+ * @param connection 文件连接
+ * @param names 属性名列表缓冲区
+ * @param size 缓冲区大小
+ * @return 实际列表大小，-1表示错误
+ */
+ssize_t j2me_file_list_attributes(j2me_file_connection_t* connection, char* names, size_t size);
 
 #endif // J2ME_FILESYSTEM_H
