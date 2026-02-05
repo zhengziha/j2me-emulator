@@ -2,6 +2,7 @@
 #define J2ME_VM_H
 
 #include "j2me_types.h"
+#include "j2me_graphics.h"
 #include <stddef.h>
 
 /**
@@ -42,6 +43,9 @@ struct j2me_vm {
     
     // 本地方法支持
     struct j2me_native_method_registry* native_method_registry; // 本地方法注册表
+    
+    // 图形显示系统
+    j2me_display_t* display;    // 显示系统实例
     
     // 统计信息
     uint64_t instructions_executed; // 执行的指令数
