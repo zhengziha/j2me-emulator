@@ -16,9 +16,17 @@ endif()
 # 查找SDL2
 find_package(SDL2 REQUIRED)
 
+# 查找SDL2_mixer (用于音频)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
+
 # 包含目录
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${SDL2_INCLUDE_DIRS})
+include_directories(${SDL2_MIXER_INCLUDE_DIRS})
+
+# 添加数学库链接 (用于图形计算)
+find_library(MATH_LIBRARY m)
 
 # 源文件
 file(GLOB_RECURSE SOURCES 
@@ -34,6 +42,13 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 # 链接库
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${SDL2_MIXER_LIBRARIES})
+target_link_directories(${PROJECT_NAME} PRIVATE ${SDL2_MIXER_LIBRARY_DIRS})
+
+# 链接数学库 (如果找到)
+if(MATH_LIBRARY)
+    target_link_libraries(${PROJECT_NAME} ${MATH_LIBRARY})
+endif()
 
 # 平台特定设置
 if(WIN32)
