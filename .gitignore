@@ -33,7 +33,6 @@ Makefile
 
 # 调试文件
 *.dSYM/
-core
 vgcore.*
 
 # 日志文件

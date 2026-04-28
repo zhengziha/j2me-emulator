@@ -214,4 +214,27 @@ j2me_error_t java_runtime_exit_internal(j2me_vm_t* vm, j2me_stack_frame_t* frame
 j2me_error_t java_throwable_print_stack_trace(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t java_throwable_fill_in_stack_trace(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 
+// Java Float类本地方法
+j2me_error_t java_float_to_int_bits(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_float_to_raw_int_bits(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_float_int_bits_to_float(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java Double类本地方法
+j2me_error_t java_double_to_long_bits(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_double_to_raw_long_bits(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_double_long_bits_to_double(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java Class类本地方法
+j2me_error_t java_class_for_name(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_new_instance(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_is_instance(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_is_assignable_from(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_is_interface(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_is_array(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_get_name(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_get_superclass(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_invoke_clinit(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_init9(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_class_invoke_verify(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
 #endif // J2ME_NATIVE_METHODS_H
