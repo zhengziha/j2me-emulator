@@ -1,5 +1,6 @@
 #include "j2me_midlet_executor.h"
 #include "j2me_interpreter.h"
+#include "j2me_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -38,7 +39,7 @@ j2me_midlet_executor_t* j2me_midlet_executor_create(j2me_vm_t* vm, j2me_jar_file
     executor->midlet_suite = j2me_jar_get_midlet_suite(jar_file);
     
     if (!executor->midlet_suite) {
-        printf("[MIDlet执行器] 错误: 无法获取MIDlet套件\n");
+        LOG_ERROR("[MIDlet执行器] 无法获取MIDlet套件");
         free(executor);
         return NULL;
     }
@@ -46,7 +47,7 @@ j2me_midlet_executor_t* j2me_midlet_executor_create(j2me_vm_t* vm, j2me_jar_file
     // 创建类加载器
     executor->class_loader = j2me_class_loader_create(vm, ".");
     if (!executor->class_loader) {
-        printf("[MIDlet执行器] 错误: 创建类加载器失败\n");
+        LOG_ERROR("[MIDlet执行器] 创建类加载器失败");
         free(executor);
         return NULL;
     }
@@ -54,7 +55,7 @@ j2me_midlet_executor_t* j2me_midlet_executor_create(j2me_vm_t* vm, j2me_jar_file
     // 设置JAR文件到类加载器
     j2me_class_loader_set_jar_file(executor->class_loader, jar_file);
     
-    printf("[MIDlet执行器] 创建成功，MIDlet套件: %s\n", 
+    LOG_INFO("[MIDlet执行器] 创建成功，MIDlet套件: %s",
            executor->midlet_suite->name ? executor->midlet_suite->name : "未知");
     
     return executor;
@@ -75,7 +76,7 @@ void j2me_midlet_executor_destroy(j2me_midlet_executor_t* executor) {
         j2me_class_loader_destroy(executor->class_loader);
     }
     
-    printf("[MIDlet执行器] 已销毁\n");
+    LOG_INFO("[MIDlet执行器] 已销毁");
     free(executor);
 }
 
@@ -84,30 +85,30 @@ j2me_error_t j2me_midlet_executor_load_midlet(j2me_midlet_executor_t* executor, 
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[MIDlet执行器] 加载MIDlet类: %s\n", midlet->class_name);
+    LOG_INFO("[MIDlet执行器] 加载MIDlet类: %s", midlet->class_name);
     
     // 加载MIDlet类
     j2me_class_t* midlet_class = j2me_class_loader_load_class(executor->class_loader, midlet->class_name);
     if (!midlet_class) {
-        printf("[MIDlet执行器] 错误: 加载MIDlet类失败: %s\n", midlet->class_name);
+        LOG_ERROR("[MIDlet执行器] 加载MIDlet类失败: %s", midlet->class_name);
         return J2ME_ERROR_CLASS_NOT_FOUND;
     }
     
     // 链接类
     j2me_error_t result = j2me_class_link(midlet_class);
     if (result != J2ME_SUCCESS) {
-        printf("[MIDlet执行器] 错误: 链接MIDlet类失败: %s\n", midlet->class_name);
+        LOG_ERROR("[MIDlet执行器] 链接MIDlet类失败: %s", midlet->class_name);
         return result;
     }
     
     // 初始化类
     result = j2me_class_initialize(midlet_class);
     if (result != J2ME_SUCCESS) {
-        printf("[MIDlet执行器] 错误: 初始化MIDlet类失败: %s\n", midlet->class_name);
+        LOG_ERROR("[MIDlet执行器] 初始化MIDlet类失败: %s", midlet->class_name);
         return result;
     }
     
-    printf("[MIDlet执行器] MIDlet类加载成功: %s\n", midlet->class_name);
+    LOG_INFO("[MIDlet执行器] MIDlet类加载成功: %s", midlet->class_name);
     return J2ME_SUCCESS;
 }
 
@@ -116,7 +117,7 @@ j2me_midlet_instance_t* j2me_midlet_executor_create_instance(j2me_midlet_executo
         return NULL;
     }
     
-    printf("[MIDlet执行器] 创建MIDlet实例: %s\n", midlet->name);
+    LOG_INFO("[MIDlet执行器] 创建MIDlet实例: %s", midlet->name);
     
     // 首先加载MIDlet类
     j2me_error_t result = j2me_midlet_executor_load_midlet(executor, midlet);
@@ -127,12 +128,12 @@ j2me_midlet_instance_t* j2me_midlet_executor_create_instance(j2me_midlet_executo
     // 查找MIDlet类
     j2me_class_t* midlet_class = j2me_class_loader_find_class(executor->class_loader, midlet->class_name);
     if (!midlet_class) {
-        printf("[MIDlet执行器] 错误: 找不到MIDlet类: %s\n", midlet->class_name);
+        LOG_ERROR("[MIDlet执行器] 找不到MIDlet类: %s", midlet->class_name);
         return NULL;
     }
     
-    printf("[MIDlet执行器] 找到MIDlet类: %s (方法数: %d)\n", 
-           midlet_class->name ? midlet_class->name : "unknown", 
+    LOG_DEBUG("[MIDlet执行器] 找到MIDlet类: %s (方法数: %d)\n",
+           midlet_class->name ? midlet_class->name : "unknown",
            midlet_class->methods_count);
     
     // 创建MIDlet实例
@@ -150,12 +151,12 @@ j2me_midlet_instance_t* j2me_midlet_executor_create_instance(j2me_midlet_executo
     // 创建MIDlet对象实例
     instance->midlet_object = j2me_object_create(executor->vm, midlet_class);
     if (!instance->midlet_object) {
-        printf("[MIDlet执行器] 错误: 创建MIDlet对象实例失败\n");
+        LOG_ERROR("[MIDlet执行器] 创建MIDlet对象实例失败");
         free(instance);
         return NULL;
     }
     
-    printf("[MIDlet执行器] MIDlet对象实例创建成功: %p\n", instance->midlet_object);
+    LOG_DEBUG("[MIDlet执行器] MIDlet对象实例创建成功: %p\n", instance->midlet_object);
     
     // 查找生命周期方法
     instance->constructor = j2me_class_find_method(midlet_class, "<init>", "()V");
@@ -163,19 +164,19 @@ j2me_midlet_instance_t* j2me_midlet_executor_create_instance(j2me_midlet_executo
     instance->pause_app = j2me_class_find_method(midlet_class, "pauseApp", "()V");
     instance->destroy_app = j2me_class_find_method(midlet_class, "destroyApp", "(Z)V");
     
-    printf("[MIDlet执行器] MIDlet实例创建成功: %s\n", midlet->name);
-    printf("[MIDlet执行器] 生命周期方法: 构造=%p, 启动=%p, 暂停=%p, 销毁=%p\n", 
+    LOG_INFO("[MIDlet执行器] MIDlet实例创建成功: %s", midlet->name);
+    LOG_DEBUG("[MIDlet执行器] 生命周期方法: 构造=%p, 启动=%p, 暂停=%p, 销毁=%p\n",
            instance->constructor, instance->start_app, instance->pause_app, instance->destroy_app);
     
     // 检查关键方法的字节码
     if (instance->constructor) {
-        printf("[MIDlet执行器] 构造方法字节码: %s (%d bytes)\n", 
-               instance->constructor->bytecode ? "有" : "无", 
+        LOG_DEBUG("[MIDlet执行器] 构造方法字节码: %s (%d bytes)\n",
+               instance->constructor->bytecode ? "有" : "无",
                instance->constructor->bytecode_length);
     }
     if (instance->start_app) {
-        printf("[MIDlet执行器] startApp方法字节码: %s (%d bytes)\n", 
-               instance->start_app->bytecode ? "有" : "无", 
+        LOG_DEBUG("[MIDlet执行器] startApp方法字节码: %s (%d bytes)\n",
+               instance->start_app->bytecode ? "有" : "无",
                instance->start_app->bytecode_length);
     }
     
@@ -194,20 +195,20 @@ static j2me_error_t execute_method_call(j2me_midlet_executor_t* executor,
                                         j2me_method_t* method, 
                                         void* object, 
                                         void* args) {
-    printf("[Execute] Method=%p, Object=%p\n", method, object);
+    LOG_DEBUG("[Execute] Method=%p, Object=%p\n", method, object);
     
     if (!method) {
-        printf("[Execute] ERROR: method is NULL\n");
+        LOG_ERROR("[Execute] method is NULL");
         return J2ME_ERROR_METHOD_NOT_FOUND;
     }
     
-    printf("[Execute] Calling interpreter (bytecode_length=%d)...\n", method->bytecode_length);
+    LOG_DEBUG("[Execute] Calling interpreter (bytecode_length=%d)...\n", method->bytecode_length);
     fflush(stdout);  // 确保输出被刷新
     
     // 直接调用解释器，不打印调试信息
     j2me_error_t result = j2me_interpreter_execute_method(executor->vm, method, object, args);
     
-    printf("[Execute] Interpreter returned: %d\n", result);
+    LOG_DEBUG("[Execute] Interpreter returned: %d\n", result);
     
     return result;
 }
@@ -218,39 +219,39 @@ j2me_error_t j2me_midlet_executor_start_instance(j2me_midlet_executor_t* executo
     }
     
     if (instance->state != MIDLET_INSTANCE_CREATED && instance->state != MIDLET_INSTANCE_PAUSED) {
-        printf("[MIDlet执行器] 错误: MIDlet实例状态不正确: %s\n", 
+        LOG_ERROR("[MIDlet执行器] MIDlet实例状态不正确: %s",
                j2me_midlet_instance_get_state_name(instance->state));
         return J2ME_ERROR_INVALID_STATE;
     }
     
-    printf("[MIDlet Executor] Starting MIDlet instance\n");
+    LOG_INFO("[MIDlet Executor] Starting MIDlet instance");
     
     // If first start, call constructor first
     if (instance->state == MIDLET_INSTANCE_CREATED) {
-        printf("[MIDlet Executor] Calling constructor...\n");
+        LOG_DEBUG("[MIDlet Executor] Calling constructor...\n");
         j2me_error_t result = execute_method_call(executor, instance->constructor, instance->midlet_object, NULL);
         if (result != J2ME_SUCCESS) {
-            printf("[MIDlet Executor] ERROR: Constructor failed: %d\n", result);
+            LOG_ERROR("[MIDlet Executor] Constructor failed: %d", result);
             return result;
         }
-        printf("[MIDlet Executor] Constructor executed successfully\n");
+        LOG_DEBUG("[MIDlet Executor] Constructor executed successfully\n");
     }
     
     // Call startApp method
-    printf("[MIDlet Executor] Calling startApp...\n");
+    LOG_DEBUG("[MIDlet Executor] Calling startApp...\n");
     j2me_error_t result = execute_method_call(executor, instance->start_app, instance->midlet_object, NULL);
     if (result != J2ME_SUCCESS) {
-        printf("[MIDlet Executor] ERROR: startApp failed: %d\n", result);
+        LOG_ERROR("[MIDlet Executor] startApp failed: %d", result);
         return result;
     }
-    printf("[MIDlet Executor] startApp executed successfully\n");
+    LOG_DEBUG("[MIDlet Executor] startApp executed successfully\n");
     
     instance->state = MIDLET_INSTANCE_STARTED;
     instance->start_time = get_current_time_ms();
     executor->current_midlet = instance;
     executor->total_midlets_run++;
     
-    printf("[MIDlet执行器] MIDlet实例启动成功: %s\n", instance->midlet_info->name);
+    LOG_INFO("[MIDlet执行器] MIDlet实例启动成功: %s", instance->midlet_info->name);
     return J2ME_SUCCESS;
 }
 
@@ -260,16 +261,16 @@ j2me_error_t j2me_midlet_executor_pause_instance(j2me_midlet_executor_t* executo
     }
     
     if (instance->state != MIDLET_INSTANCE_STARTED) {
-        printf("[MIDlet执行器] 错误: MIDlet实例未启动\n");
+        LOG_ERROR("[MIDlet执行器] MIDlet实例未启动");
         return J2ME_ERROR_INVALID_STATE;
     }
     
-    printf("[MIDlet执行器] 暂停MIDlet实例: %s\n", instance->midlet_info->name);
+    LOG_INFO("[MIDlet执行器] 暂停MIDlet实例: %s", instance->midlet_info->name);
     
     // 调用pauseApp方法
     j2me_error_t result = execute_method_call(executor, instance->pause_app, instance->midlet_object, NULL);
     if (result != J2ME_SUCCESS) {
-        printf("[MIDlet执行器] 错误: 调用pauseApp方法失败\n");
+        LOG_ERROR("[MIDlet执行器] 调用pauseApp方法失败");
         return result;
     }
     
@@ -280,7 +281,7 @@ j2me_error_t j2me_midlet_executor_pause_instance(j2me_midlet_executor_t* executo
     uint64_t current_time = get_current_time_ms();
     instance->total_run_time += (current_time - instance->start_time);
     
-    printf("[MIDlet执行器] MIDlet实例暂停成功: %s\n", instance->midlet_info->name);
+    LOG_INFO("[MIDlet执行器] MIDlet实例暂停成功: %s", instance->midlet_info->name);
     return J2ME_SUCCESS;
 }
 
@@ -290,11 +291,11 @@ j2me_error_t j2me_midlet_executor_resume_instance(j2me_midlet_executor_t* execut
     }
     
     if (instance->state != MIDLET_INSTANCE_PAUSED) {
-        printf("[MIDlet执行器] 错误: MIDlet实例未暂停\n");
+        LOG_ERROR("[MIDlet执行器] MIDlet实例未暂停");
         return J2ME_ERROR_INVALID_STATE;
     }
     
-    printf("[MIDlet执行器] 恢复MIDlet实例: %s\n", instance->midlet_info->name);
+    LOG_INFO("[MIDlet执行器] 恢复MIDlet实例: %s", instance->midlet_info->name);
     
     // 恢复实际上是重新调用startApp
     return j2me_midlet_executor_start_instance(executor, instance);
@@ -305,7 +306,7 @@ j2me_error_t j2me_midlet_executor_destroy_instance(j2me_midlet_executor_t* execu
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[MIDlet Executor] Destroying MIDlet instance\n");
+    LOG_INFO("[MIDlet Executor] Destroying MIDlet instance");
     
     // 如果实例正在运行，先暂停
     if (instance->state == MIDLET_INSTANCE_STARTED) {
@@ -333,7 +334,7 @@ j2me_error_t j2me_midlet_executor_destroy_instance(j2me_midlet_executor_t* execu
         executor->current_midlet = NULL;
     }
     
-    printf("[MIDlet Executor] MIDlet instance destroyed successfully\n");
+    LOG_INFO("[MIDlet Executor] MIDlet instance destroyed successfully");
     
     free(instance);
     return J2ME_SUCCESS;
@@ -344,7 +345,7 @@ j2me_error_t j2me_midlet_executor_run_midlet(j2me_midlet_executor_t* executor, c
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[MIDlet执行器] 运行MIDlet: %s\n", midlet_name);
+    LOG_INFO("[MIDlet执行器] 运行MIDlet: %s", midlet_name);
     
     // 首先尝试按名称查找MIDlet
     j2me_midlet_t* midlet = j2me_midlet_suite_find_midlet(executor->midlet_suite, midlet_name);
@@ -355,12 +356,12 @@ j2me_error_t j2me_midlet_executor_run_midlet(j2me_midlet_executor_t* executor, c
     }
     
     if (!midlet) {
-        printf("[MIDlet执行器] 错误: 找不到MIDlet: %s\n", midlet_name);
+        LOG_ERROR("[MIDlet执行器] 找不到MIDlet: %s", midlet_name);
         return J2ME_ERROR_CLASS_NOT_FOUND;
     }
     
-    printf("[MIDlet执行器] 找到MIDlet: %s (类: %s)\n", 
-           midlet->name ? midlet->name : "未知", 
+    LOG_DEBUG("[MIDlet执行器] 找到MIDlet: %s (类: %s)\n",
+           midlet->name ? midlet->name : "未知",
            midlet->class_name ? midlet->class_name : "未知");
     
     // 如果有当前运行的MIDlet，先销毁它
@@ -371,19 +372,19 @@ j2me_error_t j2me_midlet_executor_run_midlet(j2me_midlet_executor_t* executor, c
     // 创建新的MIDlet实例
     j2me_midlet_instance_t* instance = j2me_midlet_executor_create_instance(executor, midlet);
     if (!instance) {
-        printf("[MIDlet执行器] 错误: 创建MIDlet实例失败: %s\n", midlet_name);
+        LOG_ERROR("[MIDlet执行器] 创建MIDlet实例失败: %s", midlet_name);
         return J2ME_ERROR_OUT_OF_MEMORY;
     }
     
     // 启动MIDlet实例
     j2me_error_t result = j2me_midlet_executor_start_instance(executor, instance);
     if (result != J2ME_SUCCESS) {
-        printf("[MIDlet执行器] 错误: 启动MIDlet实例失败: %s\n", midlet_name);
+        LOG_ERROR("[MIDlet执行器] 启动MIDlet实例失败: %s", midlet_name);
         free(instance);
         return result;
     }
     
-    printf("[MIDlet执行器] MIDlet运行成功: %s\n", midlet_name);
+    LOG_INFO("[MIDlet执行器] MIDlet运行成功: %s", midlet_name);
     return J2ME_SUCCESS;
 }
 

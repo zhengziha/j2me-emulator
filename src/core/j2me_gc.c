@@ -1,6 +1,7 @@
 #include "j2me_gc.h"
 #include "j2me_vm.h"
 #include "j2me_object.h"
+#include "j2me_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -59,7 +60,7 @@ j2me_gc_t* j2me_gc_create(j2me_vm_t* vm, void* heap_start, size_t heap_size) {
     gc->root_set = NULL;
     gc->root_count = 0;
     
-    printf("[GC] 垃圾回收器创建成功，堆大小: %zu bytes\n", heap_size);
+    LOG_INFO("[GC] 垃圾回收器创建成功，堆大小: %zu bytes", heap_size);
     return gc;
 }
 
@@ -80,7 +81,7 @@ void j2me_gc_destroy(j2me_gc_t* gc) {
     j2me_gc_print_stats(gc);
     
     free(gc);
-    printf("[GC] 垃圾回收器已销毁\n");
+    LOG_INFO("[GC] 垃圾回收器已销毁");
 }
 
 void* j2me_gc_allocate(j2me_gc_t* gc, size_t size, uint32_t type_id) {
@@ -93,7 +94,7 @@ void* j2me_gc_allocate(j2me_gc_t* gc, size_t size, uint32_t type_id) {
     
     // 检查是否需要GC
     if (j2me_gc_should_collect(gc)) {
-        printf("[GC] 触发垃圾回收，当前使用: %zu/%zu bytes\n", gc->heap_used, gc->heap_size);
+        LOG_INFO("[GC] 触发垃圾回收，当前使用: %zu/%zu bytes", gc->heap_used, gc->heap_size);
         j2me_gc_collect(gc);
     }
     
@@ -102,14 +103,14 @@ void* j2me_gc_allocate(j2me_gc_t* gc, size_t size, uint32_t type_id) {
     if (!block) {
         // 尝试强制GC
         if (gc->gc_enabled && !gc->gc_in_progress) {
-            printf("[GC] 内存不足，强制垃圾回收\n");
+            LOG_WARN("[GC] 内存不足，强制垃圾回收");
             j2me_gc_collect(gc);
             block = j2me_gc_find_free_block(gc, size);
         }
         
         if (!block) {
             gc->stats.allocation_failures++;
-            printf("[GC] 错误: 内存分配失败，请求大小: %zu bytes\n", size);
+            LOG_ERROR("[GC] 内存分配失败，请求大小: %zu bytes", size);
             return NULL;
         }
     }
@@ -137,7 +138,7 @@ void* j2me_gc_allocate(j2me_gc_t* gc, size_t size, uint32_t type_id) {
     void* data = (char*)block + sizeof(j2me_gc_block_t);
     memset(data, 0, size); // 清零内存
     
-    printf("[GC] 分配内存: %zu bytes, 地址: %p, 类型ID: %u\n", size, data, type_id);
+    LOG_DEBUG("[GC] 分配内存: %zu bytes, 地址: %p, 类型ID: %u\n", size, data, type_id);
     return data;
 }
 
@@ -149,7 +150,7 @@ j2me_error_t j2me_gc_collect(j2me_gc_t* gc) {
     uint64_t start_time = j2me_gc_get_time_ms();
     gc->gc_in_progress = true;
     
-    printf("[GC] 开始垃圾回收...\n");
+    LOG_INFO("[GC] 开始垃圾回收...");
     
     // 第一阶段：标记所有对象为白色
     j2me_gc_block_t* block = gc->used_list;
@@ -171,7 +172,7 @@ j2me_error_t j2me_gc_collect(j2me_gc_t* gc) {
         root = root->next;
     }
     
-    printf("[GC] 标记阶段完成，标记根对象: %d个\n", marked_roots);
+    LOG_DEBUG("[GC] 标记阶段完成，标记根对象: %d个\n", marked_roots);
     
     // 第三阶段：清除未标记对象
     size_t bytes_collected = j2me_gc_sweep(gc);
@@ -192,8 +193,8 @@ j2me_error_t j2me_gc_collect(j2me_gc_t* gc) {
     
     gc->gc_in_progress = false;
     
-    printf("[GC] 垃圾回收完成，回收: %zu bytes, 耗时: %llu ms\n", 
-           bytes_collected, (unsigned long long)pause_time);
+    LOG_INFO("[GC] 垃圾回收完成，回收: %zu bytes, 耗时: %llu ms",
+             bytes_collected, (unsigned long long)pause_time);
     
     return J2ME_SUCCESS;
 }
@@ -224,7 +225,7 @@ j2me_error_t j2me_gc_add_root(j2me_gc_t* gc, struct j2me_object** object_ref, co
     gc->root_set = root;
     gc->root_count++;
     
-    printf("[GC] 添加根对象: %s, 总数: %zu\n", description ? description : "未知", gc->root_count);
+    LOG_DEBUG("[GC] 添加根对象: %s, 总数: %zu\n", description ? description : "未知", gc->root_count);
     return J2ME_SUCCESS;
 }
 
@@ -244,7 +245,7 @@ j2me_error_t j2me_gc_remove_root(j2me_gc_t* gc, struct j2me_object** object_ref)
                 gc->root_set = current->next;
             }
             
-            printf("[GC] 移除根对象: %s\n", current->description ? current->description : "未知");
+            LOG_DEBUG("[GC] 移除根对象: %s\n", current->description ? current->description : "未知");
             free(current);
             gc->root_count--;
             return J2ME_SUCCESS;
@@ -330,8 +331,8 @@ size_t j2me_gc_sweep(j2me_gc_t* gc) {
     gc->heap_used -= bytes_collected;
     gc->stats.objects_collected += objects_collected;
     
-    printf("[GC] 清除阶段完成，回收对象: %d个, 回收内存: %zu bytes\n", 
-           objects_collected, bytes_collected);
+    LOG_DEBUG("[GC] 清除阶段完成，回收对象: %d个, 回收内存: %zu bytes\n",
+              objects_collected, bytes_collected);
     
     return bytes_collected;
 }
@@ -369,21 +370,21 @@ void j2me_gc_print_stats(j2me_gc_t* gc) {
         return;
     }
     
-    printf("\n=== GC统计信息 ===\n");
-    printf("GC次数: %llu\n", (unsigned long long)gc->stats.collections);
-    printf("回收对象数: %llu\n", (unsigned long long)gc->stats.objects_collected);
-    printf("回收字节数: %llu\n", (unsigned long long)gc->stats.bytes_collected);
-    printf("总GC时间: %llu ms\n", (unsigned long long)gc->stats.total_time_ms);
-    printf("最大暂停时间: %llu ms\n", (unsigned long long)gc->stats.max_pause_time_ms);
-    printf("总分配次数: %llu\n", (unsigned long long)gc->stats.allocations);
-    printf("分配失败次数: %llu\n", (unsigned long long)gc->stats.allocation_failures);
-    
+    LOG_INFO("\n=== GC统计信息 ===");
+    LOG_INFO("GC次数: %llu", (unsigned long long)gc->stats.collections);
+    LOG_INFO("回收对象数: %llu", (unsigned long long)gc->stats.objects_collected);
+    LOG_INFO("回收字节数: %llu", (unsigned long long)gc->stats.bytes_collected);
+    LOG_INFO("总GC时间: %llu ms", (unsigned long long)gc->stats.total_time_ms);
+    LOG_INFO("最大暂停时间: %llu ms", (unsigned long long)gc->stats.max_pause_time_ms);
+    LOG_INFO("总分配次数: %llu", (unsigned long long)gc->stats.allocations);
+    LOG_INFO("分配失败次数: %llu", (unsigned long long)gc->stats.allocation_failures);
+
     size_t used_bytes, free_bytes, total_bytes;
     j2me_gc_get_heap_info(gc, &used_bytes, &free_bytes, &total_bytes);
-    printf("堆使用情况: %zu/%zu bytes (%.1f%%)\n", 
-           used_bytes, total_bytes, (double)used_bytes * 100.0 / total_bytes);
-    printf("根对象数量: %zu\n", gc->root_count);
-    printf("==================\n\n");
+    LOG_INFO("堆使用情况: %zu/%zu bytes (%.1f%%)",
+             used_bytes, total_bytes, (double)used_bytes * 100.0 / total_bytes);
+    LOG_INFO("根对象数量: %zu", gc->root_count);
+    LOG_INFO("==================\n");
 }
 
 void j2me_gc_get_heap_info(j2me_gc_t* gc, size_t* used_bytes, size_t* free_bytes, size_t* total_bytes) {
@@ -405,7 +406,7 @@ void j2me_gc_set_threshold(j2me_gc_t* gc, int threshold) {
     }
     
     gc->heap_threshold = gc->heap_size * threshold / 100;
-    printf("[GC] GC触发阈值设置为: %d%% (%zu bytes)\n", threshold, gc->heap_threshold);
+    LOG_INFO("[GC] GC触发阈值设置为: %d%% (%zu bytes)", threshold, gc->heap_threshold);
 }
 
 void j2me_gc_set_enabled(j2me_gc_t* gc, bool enabled) {
@@ -414,7 +415,7 @@ void j2me_gc_set_enabled(j2me_gc_t* gc, bool enabled) {
     }
     
     gc->gc_enabled = enabled;
-    printf("[GC] 垃圾回收%s\n", enabled ? "已启用" : "已禁用");
+    LOG_INFO("[GC] 垃圾回收%s", enabled ? "已启用" : "已禁用");
 }
 
 // 内部辅助函数实现
@@ -479,7 +480,7 @@ static void j2me_gc_merge_free_blocks(j2me_gc_t* gc) {
     }
     
     if (merged_count > 0) {
-        printf("[GC] 合并空闲块: %d个\n", merged_count);
+        LOG_DEBUG("[GC] 合并空闲块: %d个\n", merged_count);
     }
 }
 

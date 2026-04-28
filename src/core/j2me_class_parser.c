@@ -1,4 +1,5 @@
 #include "j2me_class.h"
+#include "j2me_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -412,10 +413,8 @@ j2me_class_t* j2me_class_parse(const uint8_t* data, size_t size) {
         class_ptr->super_name = j2me_constant_pool_get_class_name(&class_ptr->constant_pool, class_ptr->super_class);
     }
     
-    printf("[类解析器] 类名: %s, 父类: %s\n", 
-           class_ptr->name ? class_ptr->name : "unknown",
+    LOG_DEBUG("[类解析器] 类名: %s, 父类: %s\n", class_ptr->name ? class_ptr->name : "unknown",
            class_ptr->super_name ? class_ptr->super_name : "none");
-    
     // 解析接口
     class_ptr->interfaces_count = READ_U2(data, offset);
     offset += 2;
@@ -427,7 +426,7 @@ j2me_class_t* j2me_class_parse(const uint8_t* data, size_t size) {
             return NULL;
         }
         
-        printf("[类解析器] 实现的接口数量: %d\n", class_ptr->interfaces_count);
+        LOG_DEBUG("[类解析器] 实现的接口数量: %d\n", class_ptr->interfaces_count);
         for (uint16_t i = 0; i < class_ptr->interfaces_count; i++) {
             class_ptr->interfaces[i] = READ_U2(data, offset);
             offset += 2;
@@ -435,7 +434,7 @@ j2me_class_t* j2me_class_parse(const uint8_t* data, size_t size) {
             // 获取接口名称
             const char* interface_name = j2me_constant_pool_get_class_name(
                 &class_ptr->constant_pool, class_ptr->interfaces[i]);
-            printf("[类解析器]   接口 %d: %s\n", i, interface_name ? interface_name : "unknown");
+            LOG_DEBUG("[类解析器]   接口 %d: %s\n", i, interface_name ? interface_name : "unknown");
         }
     } else {
         class_ptr->interfaces = NULL;

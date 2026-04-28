@@ -912,12 +912,12 @@ j2me_error_t j2me_midlet_start(j2me_vm_t* vm, j2me_midlet_t* midlet) {
     }
     
     // 启动MIDlet实例
-    printf("[MIDlet] 准备启动MIDlet实例...\n");
+    LOG_DEBUG("[MIDlet] 准备启动MIDlet实例...\n");
     fflush(stdout);
-    
+
     j2me_error_t result = j2me_midlet_executor_start_instance(executor, instance);
-    
-    printf("[MIDlet] j2me_midlet_executor_start_instance 返回: %d\n", result);
+
+    LOG_DEBUG("[MIDlet] j2me_midlet_executor_start_instance 返回: %d\n", result);
     fflush(stdout);
     
     if (result != J2ME_SUCCESS) {

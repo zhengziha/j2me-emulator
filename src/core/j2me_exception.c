@@ -1,5 +1,6 @@
 #include "j2me_exception.h"
 #include "j2me_vm.h"
+#include "j2me_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -50,7 +51,7 @@ j2me_exception_t* j2me_exception_create(const char* exception_class, const char*
     exception->stack_trace = NULL;
     exception->stack_trace_count = 0;
     
-    printf("[异常处理] 创建异常: %s - %s\n", 
+    LOG_DEBUG("[异常处理] 创建异常: %s - %s\n",
            exception_class ? exception_class : "未知异常",
            message ? message : "无消息");
     
@@ -79,7 +80,7 @@ void j2me_exception_destroy(j2me_exception_t* exception) {
             free(exception->stack_trace);
         }
         free(exception);
-        printf("[异常处理] 销毁异常对象\n");
+        LOG_DEBUG("[异常处理] 销毁异常对象\n");
     }
 }
 
@@ -103,7 +104,7 @@ j2me_error_t j2me_exception_generate_stack_trace(j2me_vm_t* vm, j2me_exception_t
     }
     
     if (frame_count == 0) {
-        printf("[异常处理] 没有栈帧可用于生成栈跟踪\n");
+        LOG_DEBUG("[异常处理] 没有栈帧可用于生成栈跟踪\n");
         return J2ME_SUCCESS;
     }
     
@@ -163,7 +164,7 @@ j2me_error_t j2me_exception_generate_stack_trace(j2me_vm_t* vm, j2me_exception_t
             element->line_number = current_frame->pc + 1;
         }
         
-        printf("[异常处理] 栈跟踪[%d]: %s.%s (PC=%d)\n", i,
+        LOG_DEBUG("[异常处理] 栈跟踪[%d]: %s.%s (PC=%d)\n", i,
                element->class_name ? element->class_name : "未知类",
                element->method_name ? element->method_name : "未知方法",
                element->pc);
@@ -171,7 +172,7 @@ j2me_error_t j2me_exception_generate_stack_trace(j2me_vm_t* vm, j2me_exception_t
         current_frame = current_frame->previous;
     }
     
-    printf("[异常处理] 生成栈跟踪完成，共%d个栈帧\n", frame_count);
+    LOG_DEBUG("[异常处理] 生成栈跟踪完成，共%d个栈帧\n", frame_count);
     return J2ME_SUCCESS;
 }
 
@@ -184,16 +185,16 @@ void j2me_exception_print_stack_trace(j2me_exception_t* exception) {
         return;
     }
     
-    printf("异常: %s\n", exception->exception_class ? exception->exception_class : "未知异常");
+    LOG_WARN("异常: %s", exception->exception_class ? exception->exception_class : "未知异常");
     if (exception->message) {
-        printf("消息: %s\n", exception->message);
+        LOG_WARN("消息: %s", exception->message);
     }
-    
+
     if (exception->stack_trace && exception->stack_trace_count > 0) {
-        printf("栈跟踪:\n");
+        LOG_WARN("栈跟踪:");
         for (int i = 0; i < exception->stack_trace_count; i++) {
             j2me_stack_trace_element_t* element = &exception->stack_trace[i];
-            printf("  at %s.%s(%s:%d) [PC=%d]\n",
+            LOG_WARN("  at %s.%s(%s:%d) [PC=%d]",
                    element->class_name ? element->class_name : "未知类",
                    element->method_name ? element->method_name : "未知方法",
                    element->file_name ? element->file_name : "未知文件",
@@ -215,7 +216,7 @@ j2me_error_t j2me_throw_exception(j2me_vm_t* vm, const char* exception_class, co
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[异常处理] 抛出异常: %s - %s\n", 
+    LOG_WARN("[异常处理] 抛出异常: %s - %s",
            exception_class ? exception_class : "未知异常",
            message ? message : "无消息");
     
@@ -228,7 +229,7 @@ j2me_error_t j2me_throw_exception(j2me_vm_t* vm, const char* exception_class, co
     // 生成栈跟踪
     j2me_error_t trace_result = j2me_exception_generate_stack_trace(vm, exception);
     if (trace_result != J2ME_SUCCESS) {
-        printf("[异常处理] 警告: 生成栈跟踪失败: %d\n", trace_result);
+        LOG_WARN("[异常处理] 生成栈跟踪失败: %d", trace_result);
     }
     
     // 设置当前异常
@@ -256,11 +257,11 @@ j2me_error_t j2me_handle_exception(j2me_vm_t* vm, j2me_exception_t* exception) {
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[异常处理] 处理异常: %s\n", 
+    LOG_DEBUG("[异常处理] 处理异常: %s\n",
            exception->exception_class ? exception->exception_class : "未知异常");
-    
+
     if (!vm->current_thread || !vm->current_thread->current_frame) {
-        printf("[异常处理] 没有当前线程或栈帧\n");
+        LOG_ERROR("[异常处理] 没有当前线程或栈帧");
         return J2ME_ERROR_INVALID_STATE;
     }
     
@@ -275,14 +276,14 @@ j2me_error_t j2me_handle_exception(j2me_vm_t* vm, j2me_exception_t* exception) {
             // 在实际实现中，需要解析异常表并匹配异常类型
             // 这里假设方法有异常处理能力
             if (method->bytecode_length > 10) { // 简化判断：有足够字节码的方法可能有异常处理
-                printf("[异常处理] 在方法 %s.%s 中找到可能的异常处理\n",
+                LOG_DEBUG("[异常处理] 在方法 %s.%s 中找到可能的异常处理\n",
                        method->owner_class ? method->owner_class->name : "未知类",
                        method->name ? method->name : "未知方法");
-                
+
                 // 简化处理：跳转到方法末尾
                 current_frame->pc = method->bytecode_length;
-                
-                printf("[异常处理] 异常已处理\n");
+
+                LOG_DEBUG("[异常处理] 异常已处理\n");
                 return J2ME_SUCCESS;
             }
         }
@@ -292,7 +293,7 @@ j2me_error_t j2me_handle_exception(j2me_vm_t* vm, j2me_exception_t* exception) {
     }
     
     // 没有找到异常处理器，异常未被捕获
-    printf("[异常处理] 未捕获的异常: %s\n", 
+    LOG_ERROR("[异常处理] 未捕获的异常: %s",
            exception->exception_class ? exception->exception_class : "未知异常");
     
     // 打印完整的栈跟踪
@@ -309,7 +310,7 @@ void j2me_clear_exception(j2me_vm_t* vm) {
     if (vm && vm->current_thread && vm->current_thread->current_exception) {
         j2me_exception_destroy(vm->current_thread->current_exception);
         vm->current_thread->current_exception = NULL;
-        printf("[异常处理] 清除当前异常\n");
+        LOG_DEBUG("[异常处理] 清除当前异常\n");
     }
 }
 

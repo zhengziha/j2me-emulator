@@ -3,6 +3,7 @@
 #include "j2me_object.h"
 #include "j2me_vm.h"
 #include "j2me_constant_pool.h"
+#include "j2me_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -69,7 +70,7 @@ static j2me_error_t init_static_field_storage(void) {
     
     g_static_fields->size = 0;
     
-    // printf("[字段访问] 初始化静态字段存储，容量: %zu\n", g_static_fields->capacity);
+    LOG_INFO("[字段访问] 初始化静态字段存储，容量: %zu", g_static_fields->capacity);
     return J2ME_SUCCESS;
 }
 
@@ -129,7 +130,7 @@ j2me_error_t j2me_resolve_field_reference(j2me_vm_t* vm,
     j2me_constant_pool_entry_t* field_ref = &class_info->constant_pool.entries[field_ref_index - 1];
     
     if (field_ref->tag != J2ME_CONSTANT_FIELDREF) {
-        // printf("[字段访问] 错误: 常量池条目 #%d 不是字段引用 (类型: %d)\n", field_ref_index, field_ref->tag);
+        LOG_ERROR("[字段访问] 常量池条目 #%d 不是字段引用 (类型: %d)", field_ref_index, field_ref->tag);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
@@ -173,7 +174,7 @@ j2me_error_t j2me_resolve_field_reference(j2me_vm_t* vm,
     field_info->is_static = false; // 需要检查访问标志
     field_info->offset = 0;
     
-    // printf("[字段访问] 解析字段引用: %s.%s %s\n", class_constant.data.string_value ? class_constant.data.string_value : "未知类", field_info->name, field_info->descriptor);
+    LOG_DEBUG("[字段访问] 解析字段引用: %s.%s %s\n", class_constant.data.string_value ? class_constant.data.string_value : "未知类", field_info->name, field_info->descriptor);
     
     return J2ME_SUCCESS;
 }
@@ -230,33 +231,33 @@ j2me_error_t j2me_get_static_field(j2me_vm_t* vm,
     // 查找字段
     j2me_field_t* field = find_field_in_class(field_info.owner_class, field_info.name, field_info.descriptor);
     if (!field) {
-        // printf("[字段访问] 警告: 未找到字段 %s.%s，返回null\n", field_info.name, field_info.descriptor);
+        LOG_WARN("[字段访问] 未找到字段 %s.%s，返回null", field_info.name, field_info.descriptor);
         memset(value, 0, sizeof(j2me_value_t));
         value->type = J2ME_TYPE_INT;
         value->int_value = 0; // 返回null而不是假引用
         return J2ME_SUCCESS;
     }
-    
+
     // 检查是否为静态字段
     if (!(field->access_flags & ACC_STATIC)) {
-        // printf("[字段访问] 错误: 字段 %s 不是静态字段\n", field_info.name);
+        LOG_ERROR("[字段访问] 字段 %s 不是静态字段", field_info.name);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
-    
+
     // 查找静态字段值
     j2me_static_field_entry_t* entry = find_static_field(field);
     if (entry) {
         *value = entry->value;
-        // printf("[字段访问] 获取静态字段 %s 值: %d\n", field_info.name, value->int_value);
+        LOG_DEBUG("[字段访问] 获取静态字段 %s 值: %d\n", field_info.name, value->int_value);
     } else {
         // 字段未初始化，返回默认值
         memset(value, 0, sizeof(j2me_value_t));
         value->type = J2ME_TYPE_INT;
         value->int_value = 0x87654321;
-        
+
         // 添加到静态字段存储
         add_static_field(field, value);
-        // printf("[字段访问] 初始化静态字段 %s 为默认值: %d\n", field_info.name, value->int_value);
+        LOG_DEBUG("[字段访问] 初始化静态字段 %s 为默认值: %d\n", field_info.name, value->int_value);
     }
     
     return J2ME_SUCCESS;
@@ -289,25 +290,25 @@ j2me_error_t j2me_set_static_field(j2me_vm_t* vm,
     // 查找字段
     j2me_field_t* field = find_field_in_class(field_info.owner_class, field_info.name, field_info.descriptor);
     if (!field) {
-        // printf("[字段访问] 警告: 未找到字段 %s.%s，忽略设置操作\n", field_info.name, field_info.descriptor);
+        LOG_WARN("[字段访问] 未找到字段 %s.%s，忽略设置操作", field_info.name, field_info.descriptor);
         return J2ME_SUCCESS;
     }
-    
+
     // 检查是否为静态字段
     if (!(field->access_flags & ACC_STATIC)) {
-        // printf("[字段访问] 错误: 字段 %s 不是静态字段\n", field_info.name);
+        LOG_ERROR("[字段访问] 字段 %s 不是静态字段", field_info.name);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
-    
+
     // 查找或创建静态字段条目
     j2me_static_field_entry_t* entry = find_static_field(field);
     if (entry) {
         entry->value = *value;
-        // printf("[字段访问] 更新静态字段 %s 值: %d\n", field_info.name, value->int_value);
+        LOG_DEBUG("[字段访问] 更新静态字段 %s 值: %d\n", field_info.name, value->int_value);
     } else {
         error = add_static_field(field, value);
         if (error == J2ME_SUCCESS) {
-            // printf("[字段访问] 创建静态字段 %s 值: %d\n", field_info.name, value->int_value);
+            LOG_DEBUG("[字段访问] 创建静态字段 %s 值: %d\n", field_info.name, value->int_value);
         }
     }
     
@@ -336,33 +337,33 @@ j2me_error_t j2me_get_instance_field(j2me_vm_t* vm,
     // 查找字段
     j2me_field_t* field = find_field_in_class(field_info.owner_class, field_info.name, field_info.descriptor);
     if (!field) {
-        // printf("[字段访问] 警告: 未找到实例字段 %s.%s，返回null\n", field_info.name, field_info.descriptor);
+        LOG_WARN("[字段访问] 未找到实例字段 %s.%s，返回null", field_info.name, field_info.descriptor);
         memset(value, 0, sizeof(j2me_value_t));
         value->type = J2ME_TYPE_INT;
         value->int_value = 0; // 返回null而不是假引用
-        
+
         return J2ME_SUCCESS;
     }
-    
+
     // 检查是否为实例字段
     if (field->access_flags & ACC_STATIC) {
-        // printf("[字段访问] 错误: 字段 %s 是静态字段，不能作为实例字段访问\n", field_info.name);
+        LOG_ERROR("[字段访问] 字段 %s 是静态字段，不能作为实例字段访问", field_info.name);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
-    
+
     // 从对象中获取字段值（简化实现）
     memset(value, 0, sizeof(j2me_value_t));
     value->type = J2ME_TYPE_INT;
-    
+
     // 根据字段描述符返回适当的默认值
     if (field->descriptor && (field->descriptor[0] == 'L' || field->descriptor[0] == '[')) {
         // 对象引用或数组，返回null (0)
         value->int_value = 0;
-        // printf("[字段访问] 获取实例字段 %s (引用类型) 值: null\n", field_info.name);
+        LOG_DEBUG("[字段访问] 获取实例字段 %s (引用类型) 值: null\n", field_info.name);
     } else {
         // 基本类型，返回0
         value->int_value = 0;
-        // printf("[字段访问] 获取实例字段 %s (基本类型) 值: 0\n", field_info.name);
+        LOG_DEBUG("[字段访问] 获取实例字段 %s (基本类型) 值: 0\n", field_info.name);
     }
     
     return J2ME_SUCCESS;
@@ -390,18 +391,18 @@ j2me_error_t j2me_set_instance_field(j2me_vm_t* vm,
     // 查找字段
     j2me_field_t* field = find_field_in_class(field_info.owner_class, field_info.name, field_info.descriptor);
     if (!field) {
-        // printf("[字段访问] 警告: 未找到实例字段 %s.%s，忽略设置操作\n", field_info.name, field_info.descriptor);
+        LOG_WARN("[字段访问] 未找到实例字段 %s.%s，忽略设置操作", field_info.name, field_info.descriptor);
         return J2ME_SUCCESS;
     }
-    
+
     // 检查是否为实例字段
     if (field->access_flags & ACC_STATIC) {
-        // printf("[字段访问] 错误: 字段 %s 是静态字段，不能作为实例字段设置\n", field_info.name);
+        LOG_ERROR("[字段访问] 字段 %s 是静态字段，不能作为实例字段设置", field_info.name);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
-    
+
     // 设置对象字段值（简化实现）
-    // printf("[字段访问] 设置实例字段 %s 值: %d\n", field_info.name, value->int_value);
+    LOG_DEBUG("[字段访问] 设置实例字段 %s 值: %d\n", field_info.name, value->int_value);
     
     return J2ME_SUCCESS;
 }
@@ -416,6 +417,6 @@ void j2me_field_access_cleanup(void) {
         }
         free(g_static_fields);
         g_static_fields = NULL;
-        // printf("[字段访问] 清理静态字段存储\n");
+        LOG_INFO("[字段访问] 清理静态字段存储");
     }
 }

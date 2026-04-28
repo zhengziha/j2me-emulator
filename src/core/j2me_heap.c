@@ -78,8 +78,8 @@ j2me_ref_t j2me_heap_alloc(j2me_heap_t* heap, uint32_t class_id, size_t size) {
         return J2ME_NULL_REF;
     }
     
-    // 扩展对象表（如果需要）
-    if (heap->object_count >= heap->object_capacity) {
+    // 扩展对象表（如果需要）- 使用next_ref而非object_count，因为释放后object_count会减少但next_ref不会
+    if (heap->next_ref >= heap->object_capacity) {
         size_t new_capacity = heap->object_capacity * 2;
         j2me_heap_object_header_t** new_objects = (j2me_heap_object_header_t**)realloc(
             heap->objects, new_capacity * sizeof(j2me_heap_object_header_t*));

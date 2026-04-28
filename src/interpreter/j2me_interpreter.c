@@ -514,11 +514,9 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 frame->local_vars.variables[value1] = value2;
             } else {
                 if (result != J2ME_SUCCESS) {
-                    printf("[ERROR] istore_%d: 栈弹出失败, result=%d, stack_top=%d\n", 
-                           value1, result, frame->operand_stack.top);
+                    LOG_ERROR("[ERROR] istore_%d: 栈弹出失败, result=%d, stack_top=%d", value1, result, frame->operand_stack.top);
                 } else {
-                    printf("[ERROR] istore_%d: 局部变量索引越界, index=%d, size=%d\n", 
-                           value1, value1, frame->local_vars.size);
+                    LOG_ERROR("[ERROR] istore_%d: 局部变量索引越界, index=%d, size=%d", value1, value1, frame->local_vars.size);
                 }
                 result = J2ME_ERROR_INVALID_PARAMETER;
             }
@@ -1297,8 +1295,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t class_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
-                printf("[解释器] NEW: 类索引 #%d\n", class_index);
-                
+                LOG_DEBUG("[解释器] NEW: 类索引 #%d\n", class_index);
                 // 获取当前方法信息以访问常量池
                 j2me_method_t* current_method = (j2me_method_t*)frame->method_info;
                 j2me_int object_ref = 0;
@@ -1314,22 +1311,21 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                         
                         if (name_entry->tag == J2ME_CONSTANT_UTF8) {
                             const char* class_name = name_entry->info.utf8.bytes;
-                            printf("[解释器] NEW: 创建类 %s 的实例\n", class_name);
-                            
+                            LOG_DEBUG("[解释器] NEW: 创建类 %s 的实例\n", class_name);
                             // 查找类，如果未找到则尝试加载
                             j2me_class_t* target_class = j2me_class_loader_find_class(vm->class_loader, class_name);
                             if (!target_class) {
-                                printf("[解释器] NEW: 类未加载，尝试加载类 %s\n", class_name);
+                                LOG_DEBUG("[解释器] NEW: 类未加载，尝试加载类 %s\n", class_name);
                                 target_class = j2me_class_loader_load_class(vm->class_loader, class_name);
                             }
                             
                             if (target_class) {
                                 // 确保类已初始化
                                 if (target_class->state != CLASS_INITIALIZED) {
-                                    printf("[解释器] NEW: 类未初始化，执行初始化 %s\n", class_name);
+                                    LOG_DEBUG("[解释器] NEW: 类未初始化，执行初始化 %s\n", class_name);
                                     j2me_error_t init_result = j2me_class_initialize(target_class);
                                     if (init_result != J2ME_SUCCESS) {
-                                        printf("[解释器] NEW: 类初始化失败: %d\n", init_result);
+                                        LOG_ERROR("[解释器] NEW: 类初始化失败: %d", init_result);
                                     }
                                 }
                                 
@@ -1342,8 +1338,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                                 // 在堆上创建对象
                                 object_ref = j2me_heap_alloc(vm->heap, class_id, object_size);
                                 if (object_ref != J2ME_NULL_REF) {
-                                    printf("[解释器] NEW: 成功创建对象 0x%x (类: %s, 大小: %zu)\n", 
-                                             object_ref, class_name, object_size);
+                                    LOG_DEBUG("[解释器] NEW: 成功创建对象 0x%x (类: %s, 大小: %zu)\n", object_ref, class_name, object_size);
                                     
                                     // 获取对象并设置类指针
                                     j2me_heap_object_header_t* obj = j2me_heap_get_object(vm->heap, object_ref);
@@ -1359,31 +1354,30 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                                     if (j2me_class_is_subclass_of(target_class, "javax/microedition/lcdui/Canvas") ||
                                         j2me_class_is_subclass_of(target_class, "javax/microedition/lcdui/game/GameCanvas")) {
                                         vm->last_canvas_object_ref = object_ref;
-                                        printf("[解释器] NEW: 保存Canvas子类对象引用到VM: 0x%x (类: %s, 父类: %s)\n", 
-                                               object_ref, class_name, target_class->super_name ? target_class->super_name : "none");
+                                        LOG_DEBUG("[解释器] NEW: 保存Canvas子类对象引用到VM: 0x%x (类: %s, 父类: %s)\n", object_ref, class_name, target_class->super_name ? target_class->super_name : "none");
                                     }
                                 } else {
-                                    printf("[解释器] NEW: 堆分配失败，使用假引用\n");
+                                    LOG_ERROR("[解释器] NEW: 堆分配失败，使用假引用");
                                     object_ref = 0x12345678; // 回退到假引用
                                 }
                             } else {
-                                printf("[解释器] NEW: 无法加载类 %s，创建通用对象\n", class_name);
+                                LOG_ERROR("[解释器] NEW: 无法加载类 %s，创建通用对象", class_name);
                                 // 对于无法加载的类（如系统类），创建一个通用对象
                                 uint32_t class_id = 0xFFFFFFFF; // 特殊class_id表示未知类
                                 size_t object_size = 64; // 默认大小
                                 
                                 object_ref = j2me_heap_alloc(vm->heap, class_id, object_size);
                                 if (object_ref != J2ME_NULL_REF) {
-                                    printf("[解释器] NEW: 创建通用对象成功 0x%x (类: %s)\n", object_ref, class_name);
+                                    LOG_DEBUG("[解释器] NEW: 创建通用对象成功 0x%x (类: %s)\n", object_ref, class_name);
                                 } else {
-                                    printf("[解释器] NEW: 堆分配失败，使用假引用\n");
+                                    LOG_ERROR("[解释器] NEW: 堆分配失败，使用假引用");
                                     object_ref = 0x12345678; // 回退到假引用
                                 }
                             }
                         }
                     }
                 } else {
-                    printf("[解释器] NEW: VM或堆未初始化，使用假引用\n");
+                    LOG_DEBUG("[解释器] NEW: VM或堆未初始化，使用假引用\n");
                     object_ref = 0x12345678; // 回退到假引用
                 }
                 
@@ -1395,7 +1389,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                     vm->last_method_has_return_value = true;
                 }
                 
-                printf("[解释器] NEW: 对象引用已压栈 0x%x\n", object_ref);
+                LOG_DEBUG("[解释器] NEW: 对象引用已压栈 0x%x\n", object_ref);
             }
             break;
             
@@ -1773,11 +1767,16 @@ j2me_error_t j2me_interpreter_execute_batch(j2me_vm_t* vm, j2me_thread_t* thread
     
     while (executed < max_instructions && thread->is_running && thread->current_frame) {
         result = execute_single_instruction(vm, thread->current_frame);
-        
+
         if (result != J2ME_SUCCESS) {
-            break;
+            if (result == J2ME_ERROR_OUT_OF_MEMORY) {
+                LOG_DEBUG("[Interpreter] FATAL: Out of memory in thread %u, stopping\n", thread->thread_id);
+                break;
+            }
+            LOG_DEBUG("[Interpreter] Non-fatal error %d in thread %u, continuing\n", result, thread->thread_id);
+            result = J2ME_SUCCESS;
         }
-        
+
         executed++;
     }
     
@@ -1943,31 +1942,37 @@ j2me_error_t j2me_interpreter_execute_method(j2me_vm_t* vm, j2me_method_t* metho
     const uint32_t max_instructions = 1000000; // 增加到 100 万条指令
     const uint32_t debug_interval = 10000; // 每10000条指令输出一次调试信息
     
-    printf("[Interpreter] Starting execution, bytecode_length=%d\n", method->bytecode_length);
+    LOG_DEBUG("[Interpreter] Starting execution, bytecode_length=%d\n", method->bytecode_length);
     fflush(stdout);
     
     while (frame->pc < method->bytecode_length && instruction_count < max_instructions) {
         result = execute_single_instruction(vm, frame);
-        
+
         if (result != J2ME_SUCCESS) {
-            break;
+            // 只在真正致命的错误时终止执行
+            if (result == J2ME_ERROR_OUT_OF_MEMORY) {
+                LOG_DEBUG("[Interpreter] FATAL: Out of memory at pc=%d, stopping\n", frame->pc);
+                break;
+            }
+            // 非致命错误（栈溢出、方法未找到等）：记录警告并继续执行
+            LOG_DEBUG("[Interpreter] Non-fatal error %d at pc=%d, continuing execution\n", result, frame->pc);
+            result = J2ME_SUCCESS;
         }
-        
+
         instruction_count++;
         
         // 定期输出调试信息
         if (instruction_count % debug_interval == 0) {
-            printf("[Interpreter] Executed %d instructions, pc=%d/%d\n", 
-                   instruction_count, frame->pc, method->bytecode_length);
+            LOG_DEBUG("[Interpreter] Executed %d instructions, pc=%d/%d\n", instruction_count, frame->pc, method->bytecode_length);
             fflush(stdout);
         }
     }
     
-    printf("[Interpreter] Execution finished: instructions=%d, result=%d\n", instruction_count, result);
+    LOG_DEBUG("[Interpreter] Execution finished: instructions=%d, result=%d\n", instruction_count, result);
     fflush(stdout);
     
     if (instruction_count >= max_instructions) {
-        printf("[Interpreter] ERROR: Max instructions reached!\n");
+        LOG_ERROR("[Interpreter] ERROR: Max instructions reached!");
         result = J2ME_ERROR_RUNTIME_EXCEPTION;
     }
     

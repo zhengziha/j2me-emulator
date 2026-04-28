@@ -432,7 +432,7 @@ j2me_error_t java_throwable_print_stack_trace(j2me_vm_t* vm, j2me_stack_frame_t*
         while (current && depth < 20) {
             j2me_method_t* method = (j2me_method_t*)current->method_info;
             if (method && method->name) {
-                printf("  at %s%s (PC=%d)\n",
+                LOG_DEBUG("  at %s%s (PC=%d)\n",
                        method->owner_class ? (method->owner_class->name ? method->owner_class->name : "?") : "?",
                        method->name, current->pc);
             }

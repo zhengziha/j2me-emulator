@@ -1,4 +1,5 @@
 #include "j2me_class.h"
+#include "j2me_log.h"
 #include "j2me_vm.h"
 #include "j2me_jar.h"
 #include <stdlib.h>
@@ -32,7 +33,7 @@ j2me_class_loader_t* j2me_class_loader_create(j2me_vm_t* vm, const char* classpa
         }
     }
     
-    printf("[类加载器] 创建成功，类路径: %s\n", classpath ? classpath : "(默认)");
+    LOG_DEBUG("[类加载器] 创建成功，类路径: %s\n", classpath ? classpath : "(默认)");
     return loader;
 }
 
@@ -42,7 +43,7 @@ j2me_error_t j2me_class_loader_set_jar_file(j2me_class_loader_t* loader, void* j
     }
     
     loader->jar_file = jar_file;
-    printf("[类加载器] 设置JAR文件: %p\n", jar_file);
+    LOG_DEBUG("[类加载器] 设置JAR文件: %p\n", jar_file);
     return J2ME_SUCCESS;
 }
 
@@ -64,7 +65,7 @@ void j2me_class_loader_destroy(j2me_class_loader_t* loader) {
     }
     
     free(loader);
-    printf("[类加载器] 已销毁\n");
+    LOG_DEBUG("[类加载器] 已销毁\n");
 }
 
 j2me_class_t* j2me_class_loader_find_class(j2me_class_loader_t* loader, const char* class_name) {
@@ -111,19 +112,18 @@ static uint8_t* load_class_from_jar(j2me_jar_file_t* jar_file, const char* class
     // 添加.class扩展名
     strcpy(class_path + len, ".class");
     
-    printf("[类加载器] 在JAR中查找类文件: %s\n", class_path);
-    
+    LOG_DEBUG("[类加载器] 在JAR中查找类文件: %s\n", class_path);
     // 在JAR文件中查找类文件
     j2me_jar_entry_t* entry = j2me_jar_find_entry(jar_file, class_path);
     if (!entry) {
-        printf("[类加载器] 未在JAR中找到类文件: %s\n", class_path);
+        LOG_DEBUG("[类加载器] 未在JAR中找到类文件: %s\n", class_path);
         return NULL;
     }
     
     // 加载类文件数据
     j2me_error_t result = j2me_jar_load_entry(jar_file, entry);
     if (result != J2ME_SUCCESS) {
-        printf("[类加载器] 加载JAR条目失败: %s\n", class_path);
+        LOG_ERROR("[类加载器] 加载JAR条目失败: %s", class_path);
         return NULL;
     }
     
@@ -132,7 +132,7 @@ static uint8_t* load_class_from_jar(j2me_jar_file_t* jar_file, const char* class
     uint8_t* data = (uint8_t*)malloc(*size);
     if (data && entry->data) {
         memcpy(data, entry->data, *size);
-        printf("[类加载器] 从JAR加载类文件成功: %s (%zu bytes)\n", class_path, *size);
+        LOG_DEBUG("[类加载器] 从JAR加载类文件成功: %s (%zu bytes)\n", class_path, *size);
     }
     
     return data;
@@ -225,7 +225,7 @@ j2me_class_t* j2me_class_loader_load_class(j2me_class_loader_t* loader, const ch
     }
     
     if (!class_data) {
-        printf("[类加载器] 错误: 无法找到类文件 %s\n", class_name);
+        LOG_ERROR("[类加载器] 错误: 无法找到类文件 %s", class_name);
         return NULL;
     }
     
@@ -234,7 +234,7 @@ j2me_class_t* j2me_class_loader_load_class(j2me_class_loader_t* loader, const ch
     free(class_data);
     
     if (!class_ptr) {
-        printf("[类加载器] 错误: 解析类文件失败 %s\n", class_name);
+        LOG_ERROR("[类加载器] 错误: 解析类文件失败 %s", class_name);
         return NULL;
     }
     
@@ -246,28 +246,41 @@ j2me_class_t* j2me_class_loader_load_class(j2me_class_loader_t* loader, const ch
     class_ptr->next = loader->loaded_classes;
     loader->loaded_classes = class_ptr;
     
-    printf("[类加载器] 类加载成功: %s (方法数: %d, 字段数: %d)\n", 
-           class_name, class_ptr->methods_count, class_ptr->fields_count);
+    LOG_DEBUG("[类加载器] 类加载成功: %s (方法数: %d, 字段数: %d)\n", class_name, class_ptr->methods_count, class_ptr->fields_count);
     
     // 打印方法信息以便调试
     for (uint16_t i = 0; i < class_ptr->methods_count && i < 5; i++) {
         j2me_method_t* method = &class_ptr->methods[i];
-        printf("[类加载器]   方法 %d: %s%s (字节码长度: %d)\n", 
-               i, method->name ? method->name : "unknown",
+        LOG_DEBUG("[类加载器]   方法 %d: %s%s (字节码长度: %d)\n", i, method->name ? method->name : "unknown",
                method->descriptor ? method->descriptor : "",
                method->bytecode_length);
     }
     
+    // 解析父类指针
+    if (class_ptr->super_name && loader) {
+        j2me_class_t* super_class = j2me_class_loader_find_class(loader, class_ptr->super_name);
+        if (!super_class) {
+            // 父类尚未加载，递归加载
+            super_class = j2me_class_loader_load_class(loader, class_ptr->super_name);
+        }
+        if (super_class) {
+            class_ptr->super_class_ptr = super_class;
+            LOG_DEBUG("[类加载器] 父类链接: %s -> %s\n", class_name, class_ptr->super_name);
+        } else {
+            LOG_DEBUG("[类加载器] 警告: 无法加载父类 %s (当前类: %s)\n", class_ptr->super_name, class_name);
+        }
+    }
+
     // 自动链接类
     j2me_error_t link_result = j2me_class_link(class_ptr);
     if (link_result != J2ME_SUCCESS) {
-        printf("[类加载器] 警告: 类链接失败: %s (错误: %d)\n", class_name, link_result);
+        LOG_WARN("[类加载器] 警告: 类链接失败: %s (错误: %d)", class_name, link_result);
     }
     
     // 自动初始化类（执行<clinit>）
     j2me_error_t init_result = j2me_class_initialize(class_ptr);
     if (init_result != J2ME_SUCCESS) {
-        printf("[类加载器] 警告: 类初始化失败: %s (错误: %d)\n", class_name, init_result);
+        LOG_WARN("[类加载器] 警告: 类初始化失败: %s (错误: %d)", class_name, init_result);
     }
     
     return class_ptr;
@@ -288,8 +301,7 @@ j2me_error_t j2me_class_link(j2me_class_t* class_ptr) {
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[类加载器] 链接类: %s\n", class_ptr->name);
-    
+    LOG_DEBUG("[类加载器] 链接类: %s\n", class_ptr->name);
     // 验证阶段 (简化)
     // 实际实现应该进行字节码验证
     
@@ -298,7 +310,7 @@ j2me_error_t j2me_class_link(j2me_class_t* class_ptr) {
         j2me_field_t* field = &class_ptr->fields[i];
         if (field->access_flags & ACC_STATIC) {
             // 为静态字段分配内存 (简化实现)
-            printf("[类加载器] 准备静态字段: %s\n", field->name ? field->name : "unknown");
+            LOG_DEBUG("[类加载器] 准备静态字段: %s\n", field->name ? field->name : "unknown");
         }
     }
     
@@ -306,7 +318,7 @@ j2me_error_t j2me_class_link(j2me_class_t* class_ptr) {
     // 实际实现应该解析常量池中的符号引用
     
     class_ptr->state = CLASS_LINKED;
-    printf("[类加载器] 类链接完成: %s\n", class_ptr->name);
+    LOG_DEBUG("[类加载器] 类链接完成: %s\n", class_ptr->name);
     return J2ME_SUCCESS;
 }
 
@@ -333,8 +345,7 @@ j2me_error_t j2me_class_initialize(j2me_class_t* class_ptr) {
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[类加载器] 初始化类: %s\n", class_ptr->name);
-    
+    LOG_DEBUG("[类加载器] 初始化类: %s\n", class_ptr->name);
     // 标记类为已初始化（在执行<clinit>之前，防止递归初始化）
     class_ptr->state = CLASS_INITIALIZED;
     
@@ -348,8 +359,7 @@ j2me_error_t j2me_class_initialize(j2me_class_t* class_ptr) {
     
     // 执行类初始化方法 <clinit>
     if (class_ptr->clinit) {
-        printf("[类加载器] 执行类初始化方法: %s.<clinit> (字节码长度: %d)\n", 
-               class_ptr->name, class_ptr->clinit->bytecode_length);
+        LOG_DEBUG("[类加载器] 执行类初始化方法: %s.<clinit> (字节码长度: %d)\n", class_ptr->name, class_ptr->clinit->bytecode_length);
         
         // 执行<clinit>方法（静态初始化）
         if (class_ptr->loader && class_ptr->loader->vm) {
@@ -361,16 +371,15 @@ j2me_error_t j2me_class_initialize(j2me_class_t* class_ptr) {
             );
             
             if (result != J2ME_SUCCESS) {
-                printf("[类加载器] 警告: 类初始化方法执行失败: %s.<clinit> (错误: %d)\n", 
-                       class_ptr->name, result);
+                LOG_WARN("[类加载器] 警告: 类初始化方法执行失败: %s.<clinit> (错误: %d)", class_ptr->name, result);
                 // 继续执行，不中断程序
             } else {
-                printf("[类加载器] 类初始化方法执行成功: %s.<clinit>\n", class_ptr->name);
+                LOG_DEBUG("[类加载器] 类初始化方法执行成功: %s.<clinit>\n", class_ptr->name);
             }
         }
     }
     
-    printf("[类加载器] 类初始化完成: %s\n", class_ptr->name);
+    LOG_DEBUG("[类加载器] 类初始化完成: %s\n", class_ptr->name);
     return J2ME_SUCCESS;
 }
 
@@ -486,8 +495,7 @@ j2me_error_t j2me_class_loader_load_all_classes(j2me_class_loader_t* loader) {
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[类加载器] 开始加载JAR文件中的所有类...\n");
-    
+    LOG_DEBUG("[类加载器] 开始加载JAR文件中的所有类...\n");
     j2me_jar_file_t* jar_file = (j2me_jar_file_t*)loader->jar_file;
     int loaded_count = 0;
     
@@ -523,10 +531,9 @@ j2me_error_t j2me_class_loader_load_all_classes(j2me_class_loader_t* loader) {
         }
     }
     
-    printf("[类加载器] 第一阶段完成：加载了 %d 个类\n", loaded_count);
-    
+    LOG_DEBUG("[类加载器] 第一阶段完成：加载了 %d 个类\n", loaded_count);
     // 第二阶段：初始化所有已加载的类（执行<clinit>）
-    printf("[类加载器] 第二阶段：开始初始化所有类...\n");
+    LOG_DEBUG("[类加载器] 第二阶段：开始初始化所有类...\n");
     int initialized_count = 0;
     
     j2me_class_t* current = loader->loaded_classes;
@@ -541,8 +548,7 @@ j2me_error_t j2me_class_loader_load_all_classes(j2me_class_loader_t* loader) {
         current = current->next;
     }
     
-    printf("[类加载器] 第二阶段完成：初始化了 %d 个类\n", initialized_count);
-    printf("[类加载器] 所有类加载和初始化完成\n");
-    
+    LOG_DEBUG("[类加载器] 第二阶段完成：初始化了 %d 个类\n", initialized_count);
+    LOG_DEBUG("[类加载器] 所有类加载和初始化完成\n");
     return J2ME_SUCCESS;
 }

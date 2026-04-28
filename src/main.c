@@ -62,15 +62,15 @@ int main(int argc, char* argv[]) {
     // 设置日志级别为INFO（减少调试输出）
     j2me_log_set_level(J2ME_LOG_LEVEL_INFO);
     
-    printf("=== J2ME模拟器启动 ===\n");
+    LOG_INFO("=== J2ME模拟器启动 ===");
     
     // 检查命令行参数
     if (argc < 2) {
-        printf("用法: %s <JAR文件路径> [选项]\n", argv[0]);
-        printf("选项:\n");
-        printf("  -v, --verbose    显示详细调试信息\n");
-        printf("  -q, --quiet      只显示错误信息\n");
-        printf("示例: %s test_jar/zxfml.jar\n", argv[0]);
+        LOG_INFO("用法: %s <JAR文件路径> [选项]", argv[0]);
+        LOG_INFO("选项:");
+        LOG_INFO("  -v, --verbose    显示详细调试信息");
+        LOG_INFO("  -q, --quiet      只显示错误信息");
+        LOG_INFO("示例: %s test_jar/zxfml.jar", argv[0]);
         return 1;
     }
     
@@ -80,29 +80,29 @@ int main(int argc, char* argv[]) {
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
             j2me_log_set_level(J2ME_LOG_LEVEL_DEBUG);
-            printf("调试模式已启用\n");
+            LOG_INFO("调试模式已启用");
         } else if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
             j2me_log_set_level(J2ME_LOG_LEVEL_ERROR);
         }
     }
     
-    printf("📦 加载JAR文件: %s\n", jar_path);
+    LOG_DEBUG("[主程序] 加载JAR文件: %s\n", jar_path);
     
     // 初始化显示系统
     j2me_display_t* display = j2me_display_initialize(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
     if (!display) {
-        printf("错误: 显示系统初始化失败\n");
+        LOG_ERROR("显示系统初始化失败");
         return 1;
     }
     
     // 创建图形上下文
     display->context = j2me_graphics_create_context(display, WINDOW_WIDTH, WINDOW_HEIGHT);
     if (!display->context) {
-        printf("错误: 图形上下文创建失败\n");
+        LOG_ERROR("图形上下文创建失败");
         j2me_display_destroy(display);
         return 1;
     }
-    printf("✅ 图形上下文创建成功\n");
+    LOG_INFO("✅ 图形上下文创建成功");
     
     // 创建虚拟机（使用Phase 1的堆系统）
     j2me_vm_config_t vm_config = j2me_vm_get_default_config();
@@ -110,17 +110,17 @@ int main(int argc, char* argv[]) {
     
     j2me_vm_t* vm = j2me_vm_create(&vm_config);
     if (!vm) {
-        printf("错误: 虚拟机创建失败\n");
+        LOG_ERROR("虚拟机创建失败");
         j2me_display_destroy(display);
         return 1;
     }
     
-    printf("✅ 虚拟机初始化完成\n");
+    LOG_INFO("✅ 虚拟机初始化完成");
     
     // 创建输入管理器
     j2me_input_manager_t* input_manager = j2me_input_manager_create();
     if (!input_manager) {
-        printf("错误: 输入管理器创建失败\n");
+        LOG_ERROR("输入管理器创建失败");
         j2me_vm_destroy(vm);
         j2me_display_destroy(display);
         return 1;
@@ -132,18 +132,18 @@ int main(int argc, char* argv[]) {
     // 初始化虚拟机（但跳过display创建，因为我们已经设置了）
     j2me_error_t vm_result = j2me_vm_initialize(vm);
     if (vm_result != J2ME_SUCCESS) {
-        printf("错误: 虚拟机初始化失败 (错误码: %d)\n", vm_result);
+        LOG_ERROR("虚拟机初始化失败 (错误码: %d)", vm_result);
         j2me_vm_destroy(vm);
         return 1;
     }
     
-    printf("所有子系统初始化完成\n");
+    LOG_INFO("所有子系统初始化完成");
     
     // 加载JAR文件
-    printf("🎮 加载游戏...\n");
+    LOG_INFO("🎮 加载游戏...");
     j2me_jar_file_t* jar_file = j2me_jar_open(jar_path);
     if (!jar_file) {
-        printf("❌ JAR文件打开失败: %s\n", jar_path);
+        LOG_ERROR("JAR文件打开失败: %s", jar_path);
         j2me_vm_destroy(vm);
         j2me_display_destroy(display);
         return 1;
@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
     // 解析JAR文件
     vm_result = j2me_jar_parse(jar_file);
     if (vm_result != J2ME_SUCCESS) {
-        printf("❌ JAR文件解析失败: %d\n", vm_result);
+        LOG_ERROR("JAR文件解析失败: %d", vm_result);
         j2me_jar_close(jar_file);
         j2me_vm_destroy(vm);
         j2me_display_destroy(display);
@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
     // 解析清单文件
     vm_result = j2me_jar_parse_manifest(jar_file);
     if (vm_result != J2ME_SUCCESS) {
-        printf("❌ 清单文件解析失败: %d\n", vm_result);
+        LOG_ERROR("清单文件解析失败: %d", vm_result);
         j2me_jar_close(jar_file);
         j2me_vm_destroy(vm);
         j2me_display_destroy(display);
@@ -173,14 +173,14 @@ int main(int argc, char* argv[]) {
     if (vm->class_loader) {
         j2me_error_t loader_result = j2me_class_loader_set_jar_file(vm->class_loader, jar_file);
         if (loader_result != J2ME_SUCCESS) {
-            printf("❌ 设置JAR文件到类加载器失败: %d\n", loader_result);
+            LOG_ERROR("设置JAR文件到类加载器失败: %d", loader_result);
         }
     }
     
     // 获取MIDlet套件
     j2me_midlet_suite_t* suite = j2me_jar_get_midlet_suite(jar_file);
     if (!suite || suite->midlet_count == 0) {
-        printf("❌ 未找到可执行的MIDlet\n");
+        LOG_ERROR("未找到可执行的MIDlet");
         j2me_jar_close(jar_file);
         j2me_vm_destroy(vm);
         j2me_display_destroy(display);
@@ -189,27 +189,27 @@ int main(int argc, char* argv[]) {
     
     // 启动第一个MIDlet
     j2me_midlet_t* midlet = suite->midlets[0];
-    printf("🚀 启动游戏: %s\n", midlet->name ? midlet->name : "未知游戏");
-    printf("📦 MIDlet主类: %s\n", midlet->class_name ? midlet->class_name : "未知");
+    LOG_INFO("🚀 启动游戏: %s", midlet->name ? midlet->name : "未知游戏");
+    LOG_DEBUG("[主程序] MIDlet主类: %s\n", midlet->class_name ? midlet->class_name : "未知");
     
-    printf("🚀 启动游戏（这可能需要几秒钟）...\n");
+    LOG_DEBUG("[主程序] 启动游戏（这可能需要几秒钟）...\n");
     fflush(stdout);
-    
+
     vm_result = j2me_midlet_start(vm, midlet);
-    
-    printf("📍 j2me_midlet_start 返回: %d\n", vm_result);
+
+    LOG_DEBUG("[主程序] j2me_midlet_start 返回: %d\n", vm_result);
     fflush(stdout);
     
     if (vm_result != J2ME_SUCCESS) {
-        printf("❌ 游戏启动失败: %d\n", vm_result);
+        LOG_ERROR("游戏启动失败: %d", vm_result);
         j2me_jar_close(jar_file);
         j2me_vm_destroy(vm);
         j2me_display_destroy(display);
         return 1;
     }
     
-    printf("✅ 游戏启动成功！\n");
-    printf("🎮 按ESC键退出\n\n");
+    LOG_INFO("✅ 游戏启动成功！");
+    LOG_INFO("🎮 按ESC键退出");
     
     // 主循环
     bool running = true;
@@ -218,7 +218,7 @@ int main(int argc, char* argv[]) {
     const uint32_t frame_time = 1000 / 60; // 60 FPS
     int frame_counter = 0;
     
-    printf("进入主循环...\n");
+    LOG_DEBUG("[主程序] 进入主循环...\n");
     
     while (running) {
         uint32_t current_time = SDL_GetTicks();
@@ -227,7 +227,7 @@ int main(int argc, char* argv[]) {
         
         // 每5秒输出一次状态
         if (frame_counter % 300 == 0) {
-            printf("🎮 游戏运行中... 帧数: %d, 运行时间: %.1f秒, 线程数: %zu\n", 
+            LOG_DEBUG("[主循环] 游戏运行中... 帧数: %d, 运行时间: %.1f秒, 线程数: %zu\n", 
                    frame_counter, elapsed_time / 1000.0, vm->thread_count);
             fflush(stdout);
         }
@@ -252,7 +252,7 @@ int main(int argc, char* argv[]) {
             
             // 每30帧触发一次重绘（约2 FPS），降低频率避免崩溃
             if (repaint_counter % 30 == 0) {
-                printf("[主循环] 触发Canvas重绘 (Canvas=0x%x)\n", vm->current_canvas_ref);
+                LOG_DEBUG("[主循环] 触发Canvas重绘 (Canvas=0x%x)\n", vm->current_canvas_ref);
                 
                 j2me_stack_frame_t* frame = j2me_stack_frame_create(10, 5);
                 if (frame) {
@@ -262,7 +262,7 @@ int main(int argc, char* argv[]) {
                     // 调用Canvas.repaint()
                     j2me_error_t result = midp_canvas_repaint(vm, frame, NULL);
                     if (result != J2ME_SUCCESS) {
-                        printf("[主循环] Canvas.repaint()失败: %d\n", result);
+                        LOG_WARN("[主循环] Canvas.repaint()失败: %d\n", result);
                     }
                     
                     j2me_stack_frame_destroy(frame);
@@ -280,11 +280,11 @@ int main(int argc, char* argv[]) {
         SDL_Delay(1);
     }
     
-    printf("=== J2ME模拟器关闭 ===\n");
+    LOG_INFO("=== J2ME模拟器关闭 ===");
     
     // 停止MIDlet
     if (midlet) {
-        printf("🛑 停止游戏...\n");
+        LOG_INFO("🛑 停止游戏...");
         j2me_midlet_destroy(midlet);
     }
     
@@ -298,6 +298,6 @@ int main(int argc, char* argv[]) {
     j2me_vm_destroy(vm);
     // j2me_display_destroy(display); // 已经在j2me_vm_destroy中清理了
     
-    printf("👋 再见！\n");
+    LOG_INFO("👋 再见！");
     return 0;
 }

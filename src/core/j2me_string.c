@@ -1,4 +1,5 @@
 #include "j2me_string.h"
+#include "j2me_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -28,14 +29,14 @@ j2me_ref_t j2me_heap_string_create_n(j2me_heap_t* heap, const char* str, size_t 
     // 在堆上分配String对象
     j2me_ref_t ref = j2me_heap_alloc(heap, J2ME_CLASS_STRING, data_size);
     if (ref == J2ME_NULL_REF) {
-        printf("[String] 错误: 无法分配String对象\n");
+        LOG_ERROR("[String] 无法分配String对象");
         return J2ME_NULL_REF;
     }
     
     // 获取对象数据指针
     j2me_string_data_t* string_data = (j2me_string_data_t*)j2me_heap_get_object_data(heap, ref);
     if (!string_data) {
-        printf("[String] 错误: 无法获取String对象数据\n");
+        LOG_ERROR("[String] 无法获取String对象数据");
         j2me_heap_free(heap, ref);
         return J2ME_NULL_REF;
     }
@@ -45,7 +46,7 @@ j2me_ref_t j2me_heap_string_create_n(j2me_heap_t* heap, const char* str, size_t 
     memcpy(string_data->chars, str, length);
     string_data->chars[length] = '\0'; // null terminator
     
-    printf("[String] 创建String对象: ref=0x%x, length=%u, content=\"%s\"\n", 
+    LOG_DEBUG("[String] 创建String对象: ref=0x%x, length=%u, content=\"%s\"\n",
            ref, (uint32_t)length, string_data->chars);
     
     return ref;
@@ -121,7 +122,7 @@ j2me_ref_t j2me_heap_string_concat(j2me_heap_t* heap, j2me_ref_t ref1, j2me_ref_
     
     free(buffer);
     
-    printf("[String] 连接String: 0x%x + 0x%x = 0x%x\n", ref1, ref2, result);
+    LOG_DEBUG("[String] 连接String: 0x%x + 0x%x = 0x%x\n", ref1, ref2, result);
     
     return result;
 }
@@ -138,7 +139,7 @@ j2me_ref_t j2me_heap_string_substring(j2me_heap_t* heap, j2me_ref_t ref, uint32_
     
     // 检查边界
     if (start > end || end > string_data->length) {
-        printf("[String] 错误: substring索引越界 (start=%u, end=%u, length=%u)\n", 
+        LOG_ERROR("[String] substring索引越界 (start=%u, end=%u, length=%u)",
                start, end, string_data->length);
         return J2ME_NULL_REF;
     }
@@ -148,7 +149,7 @@ j2me_ref_t j2me_heap_string_substring(j2me_heap_t* heap, j2me_ref_t ref, uint32_
     // 创建新的String对象
     j2me_ref_t result = j2me_heap_string_create_n(heap, string_data->chars + start, sub_len);
     
-    printf("[String] 子串: 0x%x[%u:%u] = 0x%x\n", ref, start, end, result);
+    LOG_DEBUG("[String] 子串: 0x%x[%u:%u] = 0x%x\n", ref, start, end, result);
     
     return result;
 }
@@ -181,7 +182,7 @@ int j2me_heap_string_compare(j2me_heap_t* heap, j2me_ref_t ref1, j2me_ref_t ref2
 
 void j2me_heap_string_print(j2me_heap_t* heap, j2me_ref_t ref) {
     if (!heap || ref == J2ME_NULL_REF) {
-        printf("[String] (null)\n");
+        LOG_DEBUG("[String] (null)\n");
         return;
     }
     
@@ -189,8 +190,8 @@ void j2me_heap_string_print(j2me_heap_t* heap, j2me_ref_t ref) {
     uint32_t length = j2me_heap_string_get_length(heap, ref);
     
     if (str) {
-        printf("[String] ref=0x%x, length=%u, content=\"%s\"\n", ref, length, str);
+        LOG_DEBUG("[String] ref=0x%x, length=%u, content=\"%s\"\n", ref, length, str);
     } else {
-        printf("[String] ref=0x%x (invalid)\n", ref);
+        LOG_DEBUG("[String] ref=0x%x (invalid)\n", ref);
     }
 }

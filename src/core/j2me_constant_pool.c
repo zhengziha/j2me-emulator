@@ -3,6 +3,7 @@
 #include "j2me_object.h"
 #include "j2me_vm.h"
 #include "j2me_string.h"
+#include "j2me_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -160,7 +161,7 @@ static j2me_error_t j2me_resolve_class_constant(j2me_vm_t* vm,
     // 暂时返回当前类作为占位符
     *result = class_info;
     
-    // printf("[常量池] 解析类常量: %s\n", class_name);
+    LOG_DEBUG("[常量池] 解析类常量: %s\n", class_name);
     return J2ME_SUCCESS;
 }
 
@@ -200,7 +201,7 @@ static j2me_error_t j2me_resolve_string_constant(j2me_vm_t* vm,
     
     *result = string_obj;
     
-    // printf("[常量池] 解析字符串常量: \"%s\"\n", string_content);
+    LOG_DEBUG("[常量池] 解析字符串常量: \"%s\"\n", string_content);
     return J2ME_SUCCESS;
 }
 
@@ -222,31 +223,31 @@ j2me_error_t j2me_resolve_constant_pool_entry(j2me_vm_t* vm,
         case J2ME_CONSTANT_INTEGER:
             value->type = J2ME_CONSTANT_INTEGER;
             value->data.int_value = entry->info.integer.value;
-            // printf("[常量池] 解析整数常量: %d\n", value->data.int_value);
+            LOG_DEBUG("[常量池] 解析整数常量: %d\n", value->data.int_value);
             break;
             
         case J2ME_CONSTANT_FLOAT:
             value->type = J2ME_CONSTANT_FLOAT;
             value->data.float_value = entry->info.float_val.value;
-            // printf("[常量池] 解析浮点常量: %f\n", value->data.float_value);
+            LOG_DEBUG("[常量池] 解析浮点常量: %f\n", value->data.float_value);
             break;
             
         case J2ME_CONSTANT_LONG:
             value->type = J2ME_CONSTANT_LONG;
             value->data.long_value = entry->info.long_val.value;
-            // printf("[常量池] 解析长整数常量: %lld\n", (long long)value->data.long_value);
+            LOG_DEBUG("[常量池] 解析长整数常量: %lld\n", (long long)value->data.long_value);
             break;
             
         case J2ME_CONSTANT_DOUBLE:
             value->type = J2ME_CONSTANT_DOUBLE;
             value->data.double_value = entry->info.double_val.value;
-            // printf("[常量池] 解析双精度常量: %f\n", value->data.double_value);
+            LOG_DEBUG("[常量池] 解析双精度常量: %f\n", value->data.double_value);
             break;
             
         case J2ME_CONSTANT_UTF8:
             value->type = J2ME_CONSTANT_UTF8;
             value->data.string_value = entry->info.utf8.bytes;
-            // printf("[常量池] 解析UTF8字符串: %s\n", value->data.string_value ? value->data.string_value : "NULL");
+            LOG_DEBUG("[常量池] 解析UTF8字符串: %s\n", value->data.string_value ? value->data.string_value : "NULL");
             break;
             
         case J2ME_CONSTANT_STRING:
@@ -258,7 +259,7 @@ j2me_error_t j2me_resolve_constant_pool_entry(j2me_vm_t* vm,
                     &class_info->constant_pool.entries[entry->info.string_info.string_index - 1];
                 if (string_entry->tag == J2ME_CONSTANT_UTF8) {
                     const char* str_value = string_entry->info.utf8.bytes;
-                    // printf("[常量池] 解析字符串常量: %s\n", str_value ? str_value : "NULL");
+                    LOG_DEBUG("[常量池] 解析字符串常量: %s\n", str_value ? str_value : "NULL");
                     
                     // 在堆上创建真实的String对象
                     if (vm->heap && str_value) {
@@ -271,17 +272,17 @@ j2me_error_t j2me_resolve_constant_pool_entry(j2me_vm_t* vm,
                                 str_data->length = strlen(str_value);
                                 strcpy(str_data->chars, str_value);
                                 value->data.object_ref = (void*)(intptr_t)string_ref;
-                                // printf("[常量池] 创建String对象: ref=0x%x, 内容=\"%s\"\n", string_ref, str_value);
+                                LOG_DEBUG("[常量池] 创建String对象: ref=0x%x, 内容=\"%s\"\n", string_ref, str_value);
                             } else {
-                                // printf("[常量池] 警告: 无法获取String对象数据\n");
+                                LOG_WARN("[常量池] 警告: 无法获取String对象数据");
                                 value->data.object_ref = NULL;
                             }
                         } else {
-                            // printf("[常量池] 警告: String对象创建失败\n");
+                            LOG_WARN("[常量池] 警告: String对象创建失败");
                             value->data.object_ref = NULL;
                         }
                     } else {
-                        // printf("[常量池] 警告: 堆未初始化或字符串为空\n");
+                        LOG_WARN("[常量池] 警告: 堆未初始化或字符串为空");
                         value->data.object_ref = NULL;
                     }
                 } else {
@@ -307,11 +308,11 @@ j2me_error_t j2me_resolve_constant_pool_entry(j2me_vm_t* vm,
             } else {
                 value->data.string_value = NULL;
             }
-            // printf("[常量池] 解析类常量: %s\n", value->data.string_value ? value->data.string_value : "NULL");
+            LOG_DEBUG("[常量池] 解析类常量: %s\n", value->data.string_value ? value->data.string_value : "NULL");
             break;
             
         default:
-            // printf("[常量池] 不支持的常量类型: %d，返回默认值\n", entry->tag);
+            LOG_ERROR("[常量池] 不支持的常量类型: %d，返回默认值", entry->tag);
             value->type = J2ME_CONSTANT_INTEGER;
             value->data.int_value = index; // 使用索引作为默认值
             break;
@@ -337,7 +338,7 @@ j2me_error_t j2me_constant_pool_init_cache(j2me_class_t* class_info) {
         return J2ME_ERROR_OUT_OF_MEMORY;
     }
     
-    // printf("[常量池] 初始化缓存，容量: %d\n", class_info->constant_pool.count);
+    LOG_DEBUG("[常量池] 初始化缓存，容量: %d\n", class_info->constant_pool.count);
     return J2ME_SUCCESS;
 }
 
@@ -367,11 +368,11 @@ j2me_error_t j2me_constant_pool_preload(j2me_vm_t* vm, j2me_class_t* class_info)
             j2me_constant_value_t value;
             j2me_error_t error = j2me_resolve_constant_pool_entry(vm, class_info, i, &value);
             if (error != J2ME_SUCCESS) {
-                // printf("[常量池] 警告: 预加载常量 #%d 失败: %d\n", i, error);
+                LOG_WARN("[常量池] 警告: 预加载常量 #%d 失败: %d", i, error);
             }
         }
     }
     
-    // printf("[常量池] 预加载完成，类: %s\n", class_info->name ? class_info->name : "未知");
+    LOG_DEBUG("[常量池] 预加载完成，类: %s\n", class_info->name ? class_info->name : "未知");
     return J2ME_SUCCESS;
 }

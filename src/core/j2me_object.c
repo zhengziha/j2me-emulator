@@ -1,5 +1,6 @@
 #include "j2me_object.h"
 #include "j2me_vm.h"
+#include "j2me_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -40,7 +41,7 @@ static void* vm_heap_alloc(j2me_vm_t* vm, size_t size) {
     size_t aligned_size = (size + 7) & ~7; // 8字节对齐
     
     if ((char*)vm->heap_current + aligned_size > (char*)vm->heap_end) {
-        printf("[对象系统] 堆内存不足，需要 %zu 字节\n", aligned_size);
+        LOG_ERROR("[对象系统] 堆内存不足，需要 %zu 字节", aligned_size);
         return NULL;
     }
     
@@ -116,7 +117,7 @@ j2me_object_t* j2me_object_create(j2me_vm_t* vm, j2me_class_t* class_ptr) {
     if (class_ptr->state != CLASS_INITIALIZED) {
         j2me_error_t result = j2me_class_initialize(class_ptr);
         if (result != J2ME_SUCCESS) {
-            printf("[对象系统] 类初始化失败: %s\n", class_ptr->name ? class_ptr->name : "unknown");
+            LOG_ERROR("[对象系统] 类初始化失败: %s", class_ptr->name ? class_ptr->name : "unknown");
             return NULL;
         }
     }
@@ -125,7 +126,7 @@ j2me_object_t* j2me_object_create(j2me_vm_t* vm, j2me_class_t* class_ptr) {
     j2me_object_t* obj = (j2me_object_t*)vm_heap_alloc(vm, object_size);
     
     if (!obj) {
-        printf("[对象系统] 对象创建失败，内存不足\n");
+        LOG_ERROR("[对象系统] 对象创建失败，内存不足");
         return NULL;
     }
     
@@ -135,7 +136,7 @@ j2me_object_t* j2me_object_create(j2me_vm_t* vm, j2me_class_t* class_ptr) {
     obj->header.flags = 0;
     obj->header.lock_count = 0;
     
-    printf("[对象系统] 创建对象: %s (大小: %zu 字节)\n", 
+    LOG_DEBUG("[对象系统] 创建对象: %s (大小: %zu 字节)\n",
            class_ptr->name ? class_ptr->name : "unknown", object_size);
     
     return obj;
@@ -150,8 +151,8 @@ void j2me_object_destroy(j2me_vm_t* vm, j2me_object_t* obj) {
     // 现在只是标记为已销毁
     obj->header.flags |= OBJECT_FLAG_FINALIZED;
     
-    printf("[对象系统] 销毁对象: %s\n", 
-           obj->header.class_ptr && obj->header.class_ptr->name ? 
+    LOG_DEBUG("[对象系统] 销毁对象: %s\n",
+           obj->header.class_ptr && obj->header.class_ptr->name ?
            obj->header.class_ptr->name : "unknown");
 }
 
@@ -276,7 +277,7 @@ j2me_array_t* j2me_array_create(j2me_vm_t* vm, j2me_array_type_t element_type, u
     j2me_array_t* array = (j2me_array_t*)vm_heap_alloc(vm, array_size);
     
     if (!array) {
-        printf("[对象系统] 数组创建失败，内存不足\n");
+        LOG_ERROR("[对象系统] 数组创建失败，内存不足");
         return NULL;
     }
     
@@ -291,7 +292,7 @@ j2me_array_t* j2me_array_create(j2me_vm_t* vm, j2me_array_type_t element_type, u
     array->element_type = element_type;
     array->padding = 0;
     
-    printf("[对象系统] 创建数组: 类型=%d, 长度=%d, 大小=%zu 字节\n", 
+    LOG_DEBUG("[对象系统] 创建数组: 类型=%d, 长度=%d, 大小=%zu 字节\n",
            element_type, length, array_size);
     
     return array;
@@ -301,7 +302,7 @@ j2me_array_t* j2me_array_create_ref(j2me_vm_t* vm, j2me_class_t* element_class, 
     j2me_array_t* array = j2me_array_create(vm, ARRAY_TYPE_REFERENCE, length);
     if (array) {
         // TODO: 设置正确的数组类型
-        printf("[对象系统] 创建引用数组: 元素类型=%s, 长度=%d\n", 
+        LOG_DEBUG("[对象系统] 创建引用数组: 元素类型=%s, 长度=%d\n",
                element_class && element_class->name ? element_class->name : "unknown", length);
     }
     return array;

@@ -1,0 +1,71 @@
+package java.lang;
+
+public final class Math {
+    public static final double E = 2.718281828459045;
+    public static final double PI = 3.141592653589793;
+
+    private Math() {}
+
+    public static native double sin(double a);
+    public static native double cos(double a);
+    public static native double tan(double a);
+    public static native double asin(double a);
+    public static native double acos(double a);
+    public static native double atan(double a);
+    public static native double toRadians(double angdeg);
+    public static native double toDegrees(double angrad);
+    public static native double exp(double a);
+    public static native double log(double a);
+    public static native double sqrt(double a);
+    public static native double cbrt(double a);
+    public static native double ceil(double a);
+    public static native double floor(double a);
+    public static native double rint(double a);
+    public static native double atan2(double y, double x);
+    public static native double pow(double a, double b);
+    public static native int round(float a);
+    public static native long round(double a);
+    public static native float abs(float a);
+    public static native double abs(double a);
+    public static native int abs(int a);
+    public static native long abs(long a);
+    public static native float max(float a, float b);
+    public static native double max(double a, double b);
+    public static native int max(int a, int b);
+    public static native long max(long a, long b);
+    public static native float min(float a, float b);
+    public static native double min(double a, double b);
+    public static native int min(int a, int b);
+    public static native long min(long a, long b);
+    public static native double random();
+    public static native long addExact(long x, long y);
+    public static native int addExact(int x, int y);
+    public static native long subtractExact(long x, long y);
+    public static native int subtractExact(int x, int y);
+    public static native long multiplyExact(long x, long y);
+    public static native int multiplyExact(int x, int y);
+    public static native int decrementExact(int a);
+    public static native long decrementExact(long a);
+    public static native int incrementExact(int a);
+    public static native long incrementExact(long a);
+    public static native int negateExact(int a);
+    public static native long negateExact(long a);
+    public static native int toIntExact(long value);
+    public static native long multiplyHigh(long x, long y);
+    public static native long floorDiv(long x, long y);
+    public static native int floorDiv(int x, int y);
+    public static native long floorMod(long x, long y);
+    public static native int floorMod(int x, int y);
+    public static native long copySign(double magnitude, double sign);
+    public static native float copySign(float magnitude, float sign);
+    public static native int getExponent(double d);
+    public static native int getExponent(float f);
+    public static native double nextAfter(double start, double direction);
+    public static native float nextAfter(float start, double direction);
+    public static native double nextUp(double d);
+    public static native float nextUp(float f);
+    public static native double nextDown(double d);
+    public static native float nextDown(float f);
+    public static native double scalb(double d, int scaleFactor);
+    public static native float scalb(float f, int scaleFactor);
+}
