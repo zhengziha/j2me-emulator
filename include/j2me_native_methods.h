@@ -237,4 +237,20 @@ j2me_error_t java_class_invoke_clinit(j2me_vm_t* vm, j2me_stack_frame_t* frame, 
 j2me_error_t java_class_init9(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t java_class_invoke_verify(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 
+// Java Thread类本地方法 (Phase 5)
+j2me_error_t java_thread_start0(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_thread_is_alive(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_thread_active_count(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_thread_set_priority0(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_thread_interrupt0(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_thread_internal_exit(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Socket native 方法 (Phase 5 stubs)
+j2me_error_t java_socket_open0(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_socket_read0(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_socket_write0(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_socket_available0(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_socket_close0(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_socket_finalize(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
 #endif // J2ME_NATIVE_METHODS_H

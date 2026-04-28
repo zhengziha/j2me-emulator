@@ -205,6 +205,20 @@ j2me_error_t j2me_midp_native_methods_init(j2me_vm_t* vm) {
     j2me_native_method_register(g_native_registry, "java/lang/Class", "init9", "()V", java_class_init9);
     j2me_native_method_register(g_native_registry, "java/lang/Class", "invoke_verify", "()V", java_class_invoke_verify);
 
+    j2me_native_method_register(g_native_registry, "java/lang/Thread", "start0", "()V", java_thread_start0);
+    j2me_native_method_register(g_native_registry, "java/lang/Thread", "isAlive", "()Z", java_thread_is_alive);
+    j2me_native_method_register(g_native_registry, "java/lang/Thread", "activeCount", "()I", java_thread_active_count);
+    j2me_native_method_register(g_native_registry, "java/lang/Thread", "setPriority0", "(II)V", java_thread_set_priority0);
+    j2me_native_method_register(g_native_registry, "java/lang/Thread", "interrupt0", "()V", java_thread_interrupt0);
+    j2me_native_method_register(g_native_registry, "java/lang/Thread", "internalExit", "()V", java_thread_internal_exit);
+
+    j2me_native_method_register(g_native_registry, "com/sun/midp/io/j2me/socket/Protocol", "open0", "([BI)V", java_socket_open0);
+    j2me_native_method_register(g_native_registry, "com/sun/midp/io/j2me/socket/Protocol", "read0", "([BII)I", java_socket_read0);
+    j2me_native_method_register(g_native_registry, "com/sun/midp/io/j2me/socket/Protocol", "write0", "([BII)I", java_socket_write0);
+    j2me_native_method_register(g_native_registry, "com/sun/midp/io/j2me/socket/Protocol", "available0", "()I", java_socket_available0);
+    j2me_native_method_register(g_native_registry, "com/sun/midp/io/j2me/socket/Protocol", "close0", "()V", java_socket_close0);
+    j2me_native_method_register(g_native_registry, "com/sun/midp/io/j2me/socket/Protocol", "finalize", "()V", java_socket_finalize);
+
     vm->native_method_registry = g_native_registry;
     LOG_DEBUG("[本地方法] MIDP本地方法初始化完成，注册了 %zu 个方法\n", g_native_registry->count);
     return J2ME_SUCCESS;
