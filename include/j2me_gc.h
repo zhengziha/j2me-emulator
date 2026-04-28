@@ -14,8 +14,7 @@
  */
 
 // 前向声明
-typedef struct j2me_vm j2me_vm_t;
-typedef struct j2me_object j2me_object_t;
+struct j2me_object;
 
 // GC统计信息
 typedef struct {
@@ -47,7 +46,7 @@ typedef struct j2me_gc_block {
 
 // 根对象引用
 typedef struct j2me_gc_root {
-    j2me_object_t** object_ref;     // 对象引用指针
+    struct j2me_object** object_ref;     // 对象引用指针
     const char* description;        // 描述信息
     struct j2me_gc_root* next;      // 下一个根对象
 } j2me_gc_root_t;
@@ -119,7 +118,7 @@ j2me_error_t j2me_gc_collect(j2me_gc_t* gc);
  * @param description 描述信息
  * @return 错误码
  */
-j2me_error_t j2me_gc_add_root(j2me_gc_t* gc, j2me_object_t** object_ref, const char* description);
+j2me_error_t j2me_gc_add_root(j2me_gc_t* gc, struct j2me_object** object_ref, const char* description);
 
 /**
  * @brief 移除根对象
@@ -127,7 +126,7 @@ j2me_error_t j2me_gc_add_root(j2me_gc_t* gc, j2me_object_t** object_ref, const c
  * @param object_ref 对象引用指针
  * @return 错误码
  */
-j2me_error_t j2me_gc_remove_root(j2me_gc_t* gc, j2me_object_t** object_ref);
+j2me_error_t j2me_gc_remove_root(j2me_gc_t* gc, struct j2me_object** object_ref);
 
 /**
  * @brief 标记对象
@@ -135,7 +134,7 @@ j2me_error_t j2me_gc_remove_root(j2me_gc_t* gc, j2me_object_t** object_ref);
  * @param object 对象指针
  * @return 错误码
  */
-j2me_error_t j2me_gc_mark_object(j2me_gc_t* gc, j2me_object_t* object);
+j2me_error_t j2me_gc_mark_object(j2me_gc_t* gc, struct j2me_object* object);
 
 /**
  * @brief 清除未标记对象

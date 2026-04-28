@@ -2,6 +2,7 @@
 #include "j2me_vm.h"
 #include <stdlib.h>
 #include <string.h>
+#include "j2me_log.h"
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -96,7 +97,7 @@ j2me_filesystem_manager_t* j2me_filesystem_manager_create(j2me_vm_t* vm) {
     
     manager->security_enabled = true;
     
-    printf("[文件系统] 文件系统管理器创建成功 (高级功能支持)\n");
+    LOG_DEBUG("[文件系统] 文件系统管理器创建成功 (高级功能支持)\n");
     return manager;
 }
 
@@ -155,7 +156,7 @@ void j2me_filesystem_manager_destroy(j2me_filesystem_manager_t* manager) {
         free(manager->connections);
     }
     
-    printf("[文件系统] 文件系统管理器已销毁 (高级功能已清理)\n");
+    LOG_DEBUG("[文件系统] 文件系统管理器已销毁 (高级功能已清理)\n");
     free(manager);
 }
 
@@ -170,7 +171,7 @@ j2me_error_t j2me_filesystem_initialize(j2me_filesystem_manager_t* manager) {
     
     manager->initialized = true;
     
-    printf("[文件系统] 文件系统初始化成功\n");
+    LOG_DEBUG("[文件系统] 文件系统初始化成功\n");
     return J2ME_SUCCESS;
 }
 
@@ -184,7 +185,7 @@ void j2me_filesystem_shutdown(j2me_filesystem_manager_t* manager) {
     
     manager->initialized = false;
     
-    printf("[文件系统] 文件系统已关闭\n");
+    LOG_DEBUG("[文件系统] 文件系统已关闭\n");
 }
 
 j2me_error_t j2me_filesystem_add_root(j2me_filesystem_manager_t* manager, const char* root_path) {
@@ -206,7 +207,7 @@ j2me_error_t j2me_filesystem_add_root(j2me_filesystem_manager_t* manager, const 
     
     manager->root_count++;
     
-    printf("[文件系统] 添加允许的根目录: %s\n", root_path);
+    LOG_DEBUG("[文件系统] 添加允许的根目录: %s\n", root_path);
     return J2ME_SUCCESS;
 }
 
@@ -284,7 +285,7 @@ j2me_file_connection_t* j2me_file_connection_open(j2me_vm_t* vm, j2me_filesystem
     
     int slot = find_free_connection_slot(manager);
     if (slot < 0) {
-        printf("[文件系统] 文件连接数量已达上限\n");
+        LOG_DEBUG("[文件系统] 文件连接数量已达上限\n");
         return NULL;
     }
     
@@ -305,7 +306,7 @@ j2me_file_connection_t* j2me_file_connection_open(j2me_vm_t* vm, j2me_filesystem
     
     // 安全检查
     if (!j2me_filesystem_is_path_safe(manager, path)) {
-        printf("[文件系统] 路径不安全: %s\n", path);
+        LOG_DEBUG("[文件系统] 路径不安全: %s\n", path);
         free(path);
         free(connection);
         return NULL;
@@ -376,7 +377,7 @@ j2me_file_connection_t* j2me_file_connection_open(j2me_vm_t* vm, j2me_filesystem
     
     connection->state = FILE_CONNECTION_OPEN;
     
-    printf("[文件系统] 打开文件连接 #%d: %s\n", slot, url);
+    LOG_DEBUG("[文件系统] 打开文件连接 #%d: %s\n", slot, url);
     
     return connection;
 }
@@ -445,7 +446,7 @@ void j2me_file_connection_close(j2me_file_connection_t* connection) {
     
     connection->state = FILE_CONNECTION_CLOSED;
     
-    printf("[文件系统] 文件连接已关闭\n");
+    LOG_DEBUG("[文件系统] 文件连接已关闭\n");
     free(connection);
 }
 
@@ -479,7 +480,7 @@ j2me_error_t j2me_file_set_last_modified(j2me_file_connection_t* connection, int
     }
     
     // 简化实现：不支持设置修改时间
-    printf("[文件系统] 设置修改时间功能未实现\n");
+    LOG_DEBUG("[文件系统] 设置修改时间功能未实现\n");
     return J2ME_ERROR_NOT_IMPLEMENTED;
 }
 
@@ -517,7 +518,7 @@ j2me_error_t j2me_file_set_permissions(j2me_file_connection_t* connection,
     connection->info.writable = writable;
     connection->info.executable = executable;
     
-    printf("[文件系统] 设置文件权限: r=%d w=%d x=%d\n", readable, writable, executable);
+    LOG_DEBUG("[文件系统] 设置文件权限: r=%d w=%d x=%d\n", readable, writable, executable);
     return J2ME_SUCCESS;
 }
 
@@ -544,7 +545,7 @@ j2me_error_t j2me_file_create(j2me_file_connection_t* connection) {
     connection->info.size = 0;
     connection->info.last_modified = time(NULL) * 1000;
     
-    printf("[文件系统] 创建文件: %s\n", connection->path);
+    LOG_DEBUG("[文件系统] 创建文件: %s\n", connection->path);
     return J2ME_SUCCESS;
 }
 
@@ -562,7 +563,7 @@ j2me_error_t j2me_file_mkdir(j2me_file_connection_t* connection) {
     connection->info.size = 0;
     connection->info.last_modified = time(NULL) * 1000;
     
-    printf("[文件系统] 创建目录: %s\n", connection->path);
+    LOG_DEBUG("[文件系统] 创建目录: %s\n", connection->path);
     return J2ME_SUCCESS;
 }
 
@@ -582,7 +583,7 @@ j2me_error_t j2me_file_delete(j2me_file_connection_t* connection) {
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
-    printf("[文件系统] 删除文件: %s\n", connection->path);
+    LOG_DEBUG("[文件系统] 删除文件: %s\n", connection->path);
     return J2ME_SUCCESS;
 }
 
@@ -612,7 +613,7 @@ j2me_error_t j2me_file_rename(j2me_file_connection_t* connection, const char* ne
     
     free(dir);
     
-    printf("[文件系统] 重命名文件: %s\n", new_name);
+    LOG_DEBUG("[文件系统] 重命名文件: %s\n", new_name);
     return J2ME_SUCCESS;
 }
 
@@ -627,7 +628,7 @@ j2me_error_t j2me_file_truncate(j2me_file_connection_t* connection, size_t size)
     
     connection->info.size = size;
     
-    printf("[文件系统] 截断文件到 %zu bytes\n", size);
+    LOG_DEBUG("[文件系统] 截断文件到 %zu bytes\n", size);
     return J2ME_SUCCESS;
 }
 
@@ -783,7 +784,7 @@ j2me_error_t j2me_file_list_directory(j2me_file_connection_t* connection,
     closedir(dir);
     connection->current_index = 0;
     
-    printf("[文件系统] 列出目录内容: %d 个文件\n", connection->file_count);
+    LOG_DEBUG("[文件系统] 列出目录内容: %d 个文件\n", connection->file_count);
     return J2ME_SUCCESS;
 }
 
@@ -947,7 +948,7 @@ void j2me_filesystem_close_all(j2me_filesystem_manager_t* manager) {
     
     manager->active_connections = 0;
     
-    printf("[文件系统] 所有文件连接已关闭\n");
+    LOG_DEBUG("[文件系统] 所有文件连接已关闭\n");
 }
 
 
@@ -972,7 +973,7 @@ j2me_error_t j2me_file_lock(j2me_file_connection_t* connection, j2me_file_lock_t
         int flags = (lock_type == FILE_LOCK_SHARED) ? O_RDONLY : O_RDWR;
         connection->fd = open(connection->path, flags);
         if (connection->fd < 0) {
-            printf("[文件系统] 打开文件失败: %s\n", strerror(errno));
+            LOG_DEBUG("[文件系统] 打开文件失败: %s\n", strerror(errno));
             return J2ME_ERROR_IO_EXCEPTION;
         }
     }
@@ -983,10 +984,10 @@ j2me_error_t j2me_file_lock(j2me_file_connection_t* connection, j2me_file_lock_t
     
     if (flock(connection->fd, lock_operation) != 0) {
         if (errno == EWOULDBLOCK) {
-            printf("[文件系统] 文件已被锁定\n");
+            LOG_DEBUG("[文件系统] 文件已被锁定\n");
             return J2ME_ERROR_IO_EXCEPTION;
         } else {
-            printf("[文件系统] 锁定文件失败: %s\n", strerror(errno));
+            LOG_DEBUG("[文件系统] 锁定文件失败: %s\n", strerror(errno));
             return J2ME_ERROR_IO_EXCEPTION;
         }
     }
@@ -994,7 +995,7 @@ j2me_error_t j2me_file_lock(j2me_file_connection_t* connection, j2me_file_lock_t
     connection->lock_type = lock_type;
     connection->info.lock_type = lock_type;
     
-    printf("[文件系统] 文件锁定成功: %s (类型: %s)\n", 
+    LOG_DEBUG("[文件系统] 文件锁定成功: %s (类型: %s)\n", 
            connection->path, 
            lock_type == FILE_LOCK_SHARED ? "共享" : "排他");
     
@@ -1011,14 +1012,14 @@ j2me_error_t j2me_file_unlock(j2me_file_connection_t* connection) {
     
     if (connection->fd >= 0 && connection->lock_type != FILE_LOCK_NONE) {
         if (flock(connection->fd, LOCK_UN) != 0) {
-            printf("[文件系统] 解锁文件失败: %s\n", strerror(errno));
+            LOG_DEBUG("[文件系统] 解锁文件失败: %s\n", strerror(errno));
             return J2ME_ERROR_IO_EXCEPTION;
         }
         
         connection->lock_type = FILE_LOCK_NONE;
         connection->info.lock_type = FILE_LOCK_NONE;
         
-        printf("[文件系统] 文件解锁成功: %s\n", connection->path);
+        LOG_DEBUG("[文件系统] 文件解锁成功: %s\n", connection->path);
     }
     
     return J2ME_SUCCESS;
@@ -1045,7 +1046,7 @@ j2me_error_t j2me_file_enable_compression(j2me_file_connection_t* connection,
     }
     
     if (compression_type != COMPRESSION_GZIP) {
-        printf("[文件系统] 不支持的压缩类型: %d\n", compression_type);
+        LOG_DEBUG("[文件系统] 不支持的压缩类型: %d\n", compression_type);
         return J2ME_ERROR_NOT_IMPLEMENTED;
     }
     
@@ -1062,14 +1063,14 @@ j2me_error_t j2me_file_enable_compression(j2me_file_connection_t* connection,
     if (ret != Z_OK) {
         free(connection->compression_stream);
         connection->compression_stream = NULL;
-        printf("[文件系统] 初始化压缩失败: %d\n", ret);
+        LOG_DEBUG("[文件系统] 初始化压缩失败: %d\n", ret);
         return J2ME_ERROR_INITIALIZATION_FAILED;
     }
     
     connection->compressed = true;
     connection->info.compression = compression_type;
     
-    printf("[文件系统] 文件压缩已启用: GZIP\n");
+    LOG_DEBUG("[文件系统] 文件压缩已启用: GZIP\n");
     return J2ME_SUCCESS;
 }
 
@@ -1090,7 +1091,7 @@ j2me_error_t j2me_file_disable_compression(j2me_file_connection_t* connection) {
     connection->compressed = false;
     connection->info.compression = COMPRESSION_NONE;
     
-    printf("[文件系统] 文件压缩已禁用\n");
+    LOG_DEBUG("[文件系统] 文件压缩已禁用\n");
     return J2ME_SUCCESS;
 }
 
@@ -1104,14 +1105,14 @@ j2me_error_t j2me_file_compress(const char* source_path, const char* dest_path,
     }
     
     if (compression_type != COMPRESSION_GZIP) {
-        printf("[文件系统] 不支持的压缩类型: %d\n", compression_type);
+        LOG_DEBUG("[文件系统] 不支持的压缩类型: %d\n", compression_type);
         return J2ME_ERROR_NOT_IMPLEMENTED;
     }
     
     // 打开源文件
     FILE* source = fopen(source_path, "rb");
     if (!source) {
-        printf("[文件系统] 打开源文件失败: %s\n", source_path);
+        LOG_DEBUG("[文件系统] 打开源文件失败: %s\n", source_path);
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
@@ -1119,7 +1120,7 @@ j2me_error_t j2me_file_compress(const char* source_path, const char* dest_path,
     gzFile dest = gzopen(dest_path, "wb");
     if (!dest) {
         fclose(source);
-        printf("[文件系统] 创建压缩文件失败: %s\n", dest_path);
+        LOG_DEBUG("[文件系统] 创建压缩文件失败: %s\n", dest_path);
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
@@ -1133,7 +1134,7 @@ j2me_error_t j2me_file_compress(const char* source_path, const char* dest_path,
         total_read += bytes_read;
         int written = gzwrite(dest, buffer, bytes_read);
         if (written <= 0) {
-            printf("[文件系统] 压缩写入失败\n");
+            LOG_DEBUG("[文件系统] 压缩写入失败\n");
             gzclose(dest);
             fclose(source);
             return J2ME_ERROR_IO_EXCEPTION;
@@ -1144,7 +1145,7 @@ j2me_error_t j2me_file_compress(const char* source_path, const char* dest_path,
     gzclose(dest);
     fclose(source);
     
-    printf("[文件系统] 文件压缩完成: %s -> %s (%zu -> %zu bytes, %.1f%%)\n",
+    LOG_DEBUG("[文件系统] 文件压缩完成: %s -> %s (%zu -> %zu bytes, %.1f%%)\n",
            source_path, dest_path, total_read, total_written,
            total_read > 0 ? (100.0 * total_written / total_read) : 0.0);
     
@@ -1162,7 +1163,7 @@ j2me_error_t j2me_file_decompress(const char* source_path, const char* dest_path
     // 打开压缩文件
     gzFile source = gzopen(source_path, "rb");
     if (!source) {
-        printf("[文件系统] 打开压缩文件失败: %s\n", source_path);
+        LOG_DEBUG("[文件系统] 打开压缩文件失败: %s\n", source_path);
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
@@ -1170,7 +1171,7 @@ j2me_error_t j2me_file_decompress(const char* source_path, const char* dest_path
     FILE* dest = fopen(dest_path, "wb");
     if (!dest) {
         gzclose(source);
-        printf("[文件系统] 创建目标文件失败: %s\n", dest_path);
+        LOG_DEBUG("[文件系统] 创建目标文件失败: %s\n", dest_path);
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
@@ -1184,7 +1185,7 @@ j2me_error_t j2me_file_decompress(const char* source_path, const char* dest_path
         total_read += bytes_read;
         size_t written = fwrite(buffer, 1, bytes_read, dest);
         if (written != (size_t)bytes_read) {
-            printf("[文件系统] 解压写入失败\n");
+            LOG_DEBUG("[文件系统] 解压写入失败\n");
             fclose(dest);
             gzclose(source);
             return J2ME_ERROR_IO_EXCEPTION;
@@ -1195,7 +1196,7 @@ j2me_error_t j2me_file_decompress(const char* source_path, const char* dest_path
     fclose(dest);
     gzclose(source);
     
-    printf("[文件系统] 文件解压完成: %s -> %s (%zu -> %zu bytes)\n",
+    LOG_DEBUG("[文件系统] 文件解压完成: %s -> %s (%zu -> %zu bytes)\n",
            source_path, dest_path, total_read, total_written);
     
     return J2ME_SUCCESS;
@@ -1231,7 +1232,7 @@ j2me_error_t j2me_filesystem_add_monitor(j2me_filesystem_manager_t* manager,
     
     if (slot < 0) {
         pthread_mutex_unlock(&manager->lock_mutex);
-        printf("[文件系统] 监控数量已达上限\n");
+        LOG_DEBUG("[文件系统] 监控数量已达上限\n");
         return J2ME_ERROR_OUT_OF_MEMORY;
     }
     
@@ -1245,7 +1246,7 @@ j2me_error_t j2me_filesystem_add_monitor(j2me_filesystem_manager_t* manager,
     
     pthread_mutex_unlock(&manager->lock_mutex);
     
-    printf("[文件系统] 添加文件监控: %s (事件: 0x%x)\n", path, events);
+    LOG_DEBUG("[文件系统] 添加文件监控: %s (事件: 0x%x)\n", path, events);
     return J2ME_SUCCESS;
 }
 
@@ -1273,14 +1274,14 @@ j2me_error_t j2me_filesystem_remove_monitor(j2me_filesystem_manager_t* manager, 
             
             pthread_mutex_unlock(&manager->lock_mutex);
             
-            printf("[文件系统] 移除文件监控: %s\n", path);
+            LOG_DEBUG("[文件系统] 移除文件监控: %s\n", path);
             return J2ME_SUCCESS;
         }
     }
     
     pthread_mutex_unlock(&manager->lock_mutex);
     
-    printf("[文件系统] 未找到文件监控: %s\n", path);
+    LOG_DEBUG("[文件系统] 未找到文件监控: %s\n", path);
     return J2ME_ERROR_INVALID_PARAMETER;
 }
 
@@ -1300,21 +1301,21 @@ j2me_error_t j2me_file_set_attribute(j2me_file_connection_t* connection,
 #ifdef __APPLE__
     // macOS使用setxattr
     if (setxattr(connection->path, name, value, size, 0, 0) != 0) {
-        printf("[文件系统] 设置扩展属性失败: %s\n", strerror(errno));
+        LOG_DEBUG("[文件系统] 设置扩展属性失败: %s\n", strerror(errno));
         return J2ME_ERROR_IO_EXCEPTION;
     }
 #elif defined(__linux__)
     // Linux使用setxattr
     if (setxattr(connection->path, name, value, size, 0) != 0) {
-        printf("[文件系统] 设置扩展属性失败: %s\n", strerror(errno));
+        LOG_DEBUG("[文件系统] 设置扩展属性失败: %s\n", strerror(errno));
         return J2ME_ERROR_IO_EXCEPTION;
     }
 #else
-    printf("[文件系统] 当前平台不支持扩展属性\n");
+    LOG_DEBUG("[文件系统] 当前平台不支持扩展属性\n");
     return J2ME_ERROR_NOT_IMPLEMENTED;
 #endif
     
-    printf("[文件系统] 设置扩展属性: %s = %zu bytes\n", name, size);
+    LOG_DEBUG("[文件系统] 设置扩展属性: %s = %zu bytes\n", name, size);
     return J2ME_SUCCESS;
 }
 
@@ -1331,7 +1332,7 @@ ssize_t j2me_file_get_attribute(j2me_file_connection_t* connection,
     // macOS使用getxattr
     ssize_t result = getxattr(connection->path, name, value, size, 0, 0);
     if (result < 0) {
-        printf("[文件系统] 获取扩展属性失败: %s\n", strerror(errno));
+        LOG_DEBUG("[文件系统] 获取扩展属性失败: %s\n", strerror(errno));
         return -1;
     }
     return result;
@@ -1339,12 +1340,12 @@ ssize_t j2me_file_get_attribute(j2me_file_connection_t* connection,
     // Linux使用getxattr
     ssize_t result = getxattr(connection->path, name, value, size);
     if (result < 0) {
-        printf("[文件系统] 获取扩展属性失败: %s\n", strerror(errno));
+        LOG_DEBUG("[文件系统] 获取扩展属性失败: %s\n", strerror(errno));
         return -1;
     }
     return result;
 #else
-    printf("[文件系统] 当前平台不支持扩展属性\n");
+    LOG_DEBUG("[文件系统] 当前平台不支持扩展属性\n");
     return -1;
 #endif
 }
@@ -1360,21 +1361,21 @@ j2me_error_t j2me_file_remove_attribute(j2me_file_connection_t* connection, cons
 #ifdef __APPLE__
     // macOS使用removexattr
     if (removexattr(connection->path, name, 0) != 0) {
-        printf("[文件系统] 删除扩展属性失败: %s\n", strerror(errno));
+        LOG_DEBUG("[文件系统] 删除扩展属性失败: %s\n", strerror(errno));
         return J2ME_ERROR_IO_EXCEPTION;
     }
 #elif defined(__linux__)
     // Linux使用removexattr
     if (removexattr(connection->path, name) != 0) {
-        printf("[文件系统] 删除扩展属性失败: %s\n", strerror(errno));
+        LOG_DEBUG("[文件系统] 删除扩展属性失败: %s\n", strerror(errno));
         return J2ME_ERROR_IO_EXCEPTION;
     }
 #else
-    printf("[文件系统] 当前平台不支持扩展属性\n");
+    LOG_DEBUG("[文件系统] 当前平台不支持扩展属性\n");
     return J2ME_ERROR_NOT_IMPLEMENTED;
 #endif
     
-    printf("[文件系统] 删除扩展属性: %s\n", name);
+    LOG_DEBUG("[文件系统] 删除扩展属性: %s\n", name);
     return J2ME_SUCCESS;
 }
 
@@ -1390,7 +1391,7 @@ ssize_t j2me_file_list_attributes(j2me_file_connection_t* connection, char* name
     // macOS使用listxattr
     ssize_t result = listxattr(connection->path, names, size, 0);
     if (result < 0) {
-        printf("[文件系统] 列出扩展属性失败: %s\n", strerror(errno));
+        LOG_DEBUG("[文件系统] 列出扩展属性失败: %s\n", strerror(errno));
         return -1;
     }
     return result;
@@ -1398,12 +1399,12 @@ ssize_t j2me_file_list_attributes(j2me_file_connection_t* connection, char* name
     // Linux使用listxattr
     ssize_t result = listxattr(connection->path, names, size);
     if (result < 0) {
-        printf("[文件系统] 列出扩展属性失败: %s\n", strerror(errno));
+        LOG_DEBUG("[文件系统] 列出扩展属性失败: %s\n", strerror(errno));
         return -1;
     }
     return result;
 #else
-    printf("[文件系统] 当前平台不支持扩展属性\n");
+    LOG_DEBUG("[文件系统] 当前平台不支持扩展属性\n");
     return -1;
 #endif
 }

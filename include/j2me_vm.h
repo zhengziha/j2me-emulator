@@ -6,6 +6,7 @@
 #include "j2me_input.h"
 #include "j2me_interpreter_optimized.h"
 #include "j2me_gc.h"
+#include "j2me_heap.h"
 #include <stddef.h>
 
 /**
@@ -33,14 +34,18 @@ struct j2me_vm {
     j2me_vm_config_t config;    // 配置信息
     
     // 内存管理
-    void* heap_start;           // 堆起始地址
-    void* heap_end;             // 堆结束地址
-    void* heap_current;         // 当前堆指针
+    void* heap_start;           // 堆起始地址（旧系统，保留兼容）
+    void* heap_end;             // 堆结束地址（旧系统，保留兼容）
+    void* heap_current;         // 当前堆指针（旧系统，保留兼容）
+    j2me_heap_t* heap;          // 新的对象堆系统
     j2me_gc_t* gc;              // 垃圾回收器
     
     // 线程管理
     j2me_thread_t* main_thread; // 主线程
     j2me_thread_t* current_thread; // 当前线程
+    j2me_thread_t* thread_list; // 所有线程的链表
+    uint32_t next_thread_id;    // 下一个线程ID
+    size_t thread_count;        // 线程数量
     
     // 类加载器
     void* class_loader;         // 类加载器实例
@@ -56,6 +61,16 @@ struct j2me_vm {
     
     // 当前活动的Canvas对象
     j2me_int current_canvas_ref; // 当前Canvas对象引用
+    
+    // 最后创建的Canvas类对象（用于Display.setCurrent）
+    j2me_int last_canvas_object_ref; // 最后创建的Canvas类对象引用
+    
+    // 当前创建的Runnable对象（用于Thread构造）
+    j2me_int current_runnable_ref; // 当前Runnable对象引用
+    
+    // 方法调用返回值（用于传递嵌套调用的返回值）
+    j2me_int last_method_return_value;
+    bool last_method_has_return_value;
     
     // 优化解释器
     j2me_optimized_interpreter_t* optimized_interpreter; // 优化解释器实例
@@ -133,5 +148,39 @@ void j2me_vm_pointer_event_handler(j2me_pointer_event_t* event, void* user_data)
  * @return 默认配置
  */
 j2me_vm_config_t j2me_vm_get_default_config(void);
+
+/**
+ * @brief 创建新线程
+ * @param vm 虚拟机实例
+ * @param thread_object Java Thread对象
+ * @param runnable_object Runnable对象（可选）
+ * @return 新线程指针，失败返回NULL
+ */
+j2me_thread_t* j2me_vm_create_thread(j2me_vm_t* vm, void* thread_object, void* runnable_object);
+
+/**
+ * @brief 启动线程（调用run方法）
+ * @param vm 虚拟机实例
+ * @param thread 线程实例
+ * @return 错误码
+ */
+j2me_error_t j2me_vm_start_thread(j2me_vm_t* vm, j2me_thread_t* thread);
+
+/**
+ * @brief 执行线程的run方法（执行一批指令）
+ * @param vm 虚拟机实例
+ * @param thread 线程实例
+ * @param instruction_count 要执行的指令数
+ * @return 错误码
+ */
+j2me_error_t j2me_vm_execute_thread(j2me_vm_t* vm, j2me_thread_t* thread, uint32_t instruction_count);
+
+/**
+ * @brief 执行所有活动线程
+ * @param vm 虚拟机实例
+ * @param instructions_per_thread 每个线程执行的指令数
+ * @return 错误码
+ */
+j2me_error_t j2me_vm_execute_all_threads(j2me_vm_t* vm, uint32_t instructions_per_thread);
 
 #endif // J2ME_VM_H

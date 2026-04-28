@@ -67,3 +67,4 @@ callgrind.out.*
 test_jar
 *.mf
 *.class
+.cache/

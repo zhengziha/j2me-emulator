@@ -3,6 +3,7 @@
 #include "j2me_midlet_executor.h"
 #include <stdlib.h>
 #include <string.h>
+#include "j2me_log.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -151,14 +152,14 @@ j2me_jar_file_t* j2me_jar_open(const char* filename) {
     // 检查文件是否存在
     struct stat st;
     if (stat(filename, &st) != 0) {
-        printf("[JAR解析器] 文件不存在: %s\n", filename);
+        LOG_DEBUG("[JAR解析器] 文件不存在: %s\n", filename);
         return NULL;
     }
     
     // 打开文件
     FILE* file = fopen(filename, "rb");
     if (!file) {
-        printf("[JAR解析器] 打开文件失败: %s\n", filename);
+        LOG_DEBUG("[JAR解析器] 打开文件失败: %s\n", filename);
         return NULL;
     }
     
@@ -176,7 +177,7 @@ j2me_jar_file_t* j2me_jar_open(const char* filename) {
     jar_file->file_size = st.st_size;
     jar_file->parsed = false;
     
-    printf("[JAR解析器] JAR文件打开成功: %s (大小: %zu bytes)\n", filename, jar_file->file_size);
+    LOG_DEBUG("[JAR解析器] JAR文件打开成功: %s (大小: %zu bytes)\n", filename, jar_file->file_size);
     
     return jar_file;
 }
@@ -221,7 +222,7 @@ void j2me_jar_close(j2me_jar_file_t* jar_file) {
         free(jar_file->filename);
     }
     
-    printf("[JAR解析器] JAR文件已关闭\n");
+    LOG_DEBUG("[JAR解析器] JAR文件已关闭\n");
     free(jar_file);
 }
 
@@ -234,12 +235,12 @@ j2me_error_t j2me_jar_parse(j2me_jar_file_t* jar_file) {
         return J2ME_SUCCESS; // 已经解析过
     }
     
-    printf("[JAR解析器] 开始解析JAR文件...\n");
+    LOG_DEBUG("[JAR解析器] 开始解析JAR文件...\n");
     
     // 查找中央目录结束记录
     long eocd_pos = find_end_of_central_dir(jar_file->file, jar_file->file_size);
     if (eocd_pos < 0) {
-        printf("[JAR解析器] 未找到ZIP中央目录结束记录\n");
+        LOG_DEBUG("[JAR解析器] 未找到ZIP中央目录结束记录\n");
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
@@ -255,7 +256,7 @@ j2me_error_t j2me_jar_parse(j2me_jar_file_t* jar_file) {
     eocd.central_dir_offset = read_uint32_le(jar_file->file);
     eocd.comment_length = read_uint16_le(jar_file->file);
     
-    printf("[JAR解析器] 找到 %d 个条目\n", eocd.total_entries);
+    // LOG_DEBUG("[JAR解析器] 找到 %d 个条目\n", eocd.total_entries);
     
     // 分配条目数组
     jar_file->entry_count = eocd.total_entries;
@@ -273,7 +274,7 @@ j2me_error_t j2me_jar_parse(j2me_jar_file_t* jar_file) {
         header.signature = read_uint32_le(jar_file->file);
         
         if (header.signature != ZIP_CENTRAL_DIR_HEADER_SIGNATURE) {
-            printf("[JAR解析器] 无效的中央目录头签名: 0x%08x\n", header.signature);
+            LOG_DEBUG("[JAR解析器] 无效的中央目录头签名: 0x%08x\n", header.signature);
             return J2ME_ERROR_IO_EXCEPTION;
         }
         
@@ -326,9 +327,10 @@ j2me_error_t j2me_jar_parse(j2me_jar_file_t* jar_file) {
         
         jar_file->entries[i] = entry;
         
-        printf("[JAR解析器] 条目 #%d: %s (%s, %zu -> %zu bytes)\n", 
-               i, entry->name, j2me_jar_get_entry_type_name(entry->type),
-               entry->compressed_size, entry->uncompressed_size);
+        // 屏蔽每个条目的详细输出，太多了
+        // // LOG_DEBUG("[JAR解析器] 条目 #%d: %s (%s, %zu -> %zu bytes)\n", 
+        //        i, entry->name, j2me_jar_get_entry_type_name(entry->type),
+        //        entry->compressed_size, entry->uncompressed_size);
     }
     
     jar_file->parsed = true;
@@ -336,7 +338,7 @@ j2me_error_t j2me_jar_parse(j2me_jar_file_t* jar_file) {
     // 解析清单文件
     j2me_jar_parse_manifest(jar_file);
     
-    printf("[JAR解析器] JAR文件解析完成\n");
+    LOG_DEBUG("[JAR解析器] JAR文件解析完成\n");
     return J2ME_SUCCESS;
 }
 
@@ -384,7 +386,7 @@ j2me_error_t j2me_jar_load_entry(j2me_jar_file_t* jar_file, j2me_jar_entry_t* en
     header.signature = read_uint32_le(jar_file->file);
     
     if (header.signature != ZIP_LOCAL_FILE_HEADER_SIGNATURE) {
-        printf("[JAR解析器] 无效的本地文件头签名: 0x%08x\n", header.signature);
+        LOG_DEBUG("[JAR解析器] 无效的本地文件头签名: 0x%08x\n", header.signature);
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
@@ -417,7 +419,7 @@ j2me_error_t j2me_jar_load_entry(j2me_jar_file_t* jar_file, j2me_jar_entry_t* en
     size_t bytes_read = fread(compressed_data, 1, entry->compressed_size, jar_file->file);
     if (bytes_read != entry->compressed_size) {
         free(compressed_data);
-        printf("[JAR解析器] 读取压缩数据失败\n");
+        LOG_DEBUG("[JAR解析器] 读取压缩数据失败\n");
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
@@ -446,7 +448,7 @@ j2me_error_t j2me_jar_load_entry(j2me_jar_file_t* jar_file, j2me_jar_entry_t* en
             free(compressed_data);
             free(entry->data);
             entry->data = NULL;
-            printf("[JAR解析器] zlib初始化失败: %d\n", ret);
+            LOG_DEBUG("[JAR解析器] zlib初始化失败: %d\n", ret);
             return J2ME_ERROR_IO_EXCEPTION;
         }
         
@@ -457,20 +459,20 @@ j2me_error_t j2me_jar_load_entry(j2me_jar_file_t* jar_file, j2me_jar_entry_t* en
             free(compressed_data);
             free(entry->data);
             entry->data = NULL;
-            printf("[JAR解析器] 解压失败: %d\n", ret);
+            LOG_DEBUG("[JAR解析器] 解压失败: %d\n", ret);
             return J2ME_ERROR_IO_EXCEPTION;
         }
         
         free(compressed_data);
     } else {
         free(compressed_data);
-        printf("[JAR解析器] 不支持的压缩方法: %d\n", entry->compression_method);
+        LOG_DEBUG("[JAR解析器] 不支持的压缩方法: %d\n", entry->compression_method);
         return J2ME_ERROR_NOT_IMPLEMENTED;
     }
     
     entry->loaded = true;
     
-    printf("[JAR解析器] 条目加载成功: %s (%zu bytes)\n", entry->name, entry->uncompressed_size);
+    // // LOG_DEBUG("[JAR解析器] 条目加载成功: %s (%zu bytes)\n", entry->name, entry->uncompressed_size);
     return J2ME_SUCCESS;
 }
 
@@ -494,7 +496,7 @@ j2me_error_t j2me_jar_extract_entry(j2me_jar_file_t* jar_file, j2me_jar_entry_t*
     // 写入文件
     FILE* output_file = fopen(output_path, "wb");
     if (!output_file) {
-        printf("[JAR解析器] 创建输出文件失败: %s\n", output_path);
+        LOG_DEBUG("[JAR解析器] 创建输出文件失败: %s\n", output_path);
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
@@ -502,14 +504,14 @@ j2me_error_t j2me_jar_extract_entry(j2me_jar_file_t* jar_file, j2me_jar_entry_t*
         size_t bytes_written = fwrite(entry->data, 1, entry->uncompressed_size, output_file);
         if (bytes_written != entry->uncompressed_size) {
             fclose(output_file);
-            printf("[JAR解析器] 写入文件失败\n");
+            LOG_DEBUG("[JAR解析器] 写入文件失败\n");
             return J2ME_ERROR_IO_EXCEPTION;
         }
     }
     
     fclose(output_file);
     
-    printf("[JAR解析器] 条目提取成功: %s -> %s\n", entry->name, output_path);
+    // LOG_DEBUG("[JAR解析器] 条目提取成功: %s -> %s\n", entry->name, output_path);
     return J2ME_SUCCESS;
 }
 
@@ -518,7 +520,7 @@ j2me_error_t j2me_jar_extract_all(j2me_jar_file_t* jar_file, const char* output_
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[JAR解析器] 开始提取所有条目到: %s\n", output_dir);
+    LOG_DEBUG("[JAR解析器] 开始提取所有条目到: %s\n", output_dir);
     
     for (int i = 0; i < jar_file->entry_count; i++) {
         j2me_jar_entry_t* entry = jar_file->entries[i];
@@ -530,12 +532,12 @@ j2me_error_t j2me_jar_extract_all(j2me_jar_file_t* jar_file, const char* output_
         
         j2me_error_t result = j2me_jar_extract_entry(jar_file, entry, output_path);
         if (result != J2ME_SUCCESS) {
-            printf("[JAR解析器] 提取条目失败: %s\n", entry->name);
+            LOG_DEBUG("[JAR解析器] 提取条目失败: %s\n", entry->name);
             // 继续处理其他条目
         }
     }
     
-    printf("[JAR解析器] 所有条目提取完成\n");
+    LOG_DEBUG("[JAR解析器] 所有条目提取完成\n");
     return J2ME_SUCCESS;
 }
 
@@ -645,19 +647,19 @@ j2me_error_t j2me_jar_parse_manifest(j2me_jar_file_t* jar_file) {
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[JAR解析器] 开始解析清单文件...\n");
+    LOG_DEBUG("[JAR解析器] 开始解析清单文件...\n");
     
     // 查找清单文件
     j2me_jar_entry_t* manifest_entry = j2me_jar_find_entry(jar_file, "META-INF/MANIFEST.MF");
     if (!manifest_entry) {
-        printf("[JAR解析器] 未找到清单文件\n");
+        LOG_DEBUG("[JAR解析器] 未找到清单文件\n");
         return J2ME_ERROR_CLASS_NOT_FOUND;
     }
     
     // 加载清单文件
     j2me_error_t result = j2me_jar_load_entry(jar_file, manifest_entry);
     if (result != J2ME_SUCCESS) {
-        printf("[JAR解析器] 加载清单文件失败\n");
+        LOG_DEBUG("[JAR解析器] 加载清单文件失败\n");
         return result;
     }
     
@@ -674,12 +676,12 @@ j2me_error_t j2me_jar_parse_manifest(j2me_jar_file_t* jar_file) {
     memcpy(jar_file->manifest_content, manifest_entry->data, manifest_entry->uncompressed_size);
     jar_file->manifest_content[manifest_entry->uncompressed_size] = '\0';
     
-    printf("[JAR解析器] 清单文件内容:\n%s\n", jar_file->manifest_content);
+    LOG_DEBUG("[JAR解析器] 清单文件内容:\n%s\n", jar_file->manifest_content);
     
     // 创建MIDlet套件
     jar_file->midlet_suite = j2me_midlet_suite_create(jar_file);
     
-    printf("[JAR解析器] 清单文件解析完成\n");
+    LOG_DEBUG("[JAR解析器] 清单文件解析完成\n");
     return J2ME_SUCCESS;
 }
 
@@ -696,7 +698,7 @@ j2me_midlet_suite_t* j2me_midlet_suite_create(j2me_jar_file_t* jar_file) {
         return NULL;
     }
     
-    printf("[MIDlet套件] 创建MIDlet套件...\n");
+    LOG_DEBUG("[MIDlet套件] 创建MIDlet套件...\n");
     
     j2me_midlet_suite_t* suite = (j2me_midlet_suite_t*)malloc(sizeof(j2me_midlet_suite_t));
     if (!suite) {
@@ -713,11 +715,11 @@ j2me_midlet_suite_t* j2me_midlet_suite_create(j2me_jar_file_t* jar_file) {
     suite->microedition_profile = parse_manifest_attribute(jar_file->manifest_content, "MicroEdition-Profile");
     suite->microedition_configuration = parse_manifest_attribute(jar_file->manifest_content, "MicroEdition-Configuration");
     
-    printf("[MIDlet套件] 名称: %s\n", suite->name ? suite->name : "未知");
-    printf("[MIDlet套件] 供应商: %s\n", suite->vendor ? suite->vendor : "未知");
-    printf("[MIDlet套件] 版本: %s\n", suite->version ? suite->version : "未知");
-    printf("[MIDlet套件] 配置: %s\n", suite->microedition_configuration ? suite->microedition_configuration : "未知");
-    printf("[MIDlet套件] 配置文件: %s\n", suite->microedition_profile ? suite->microedition_profile : "未知");
+    LOG_DEBUG("[MIDlet套件] 名称: %s\n", suite->name ? suite->name : "未知");
+    LOG_DEBUG("[MIDlet套件] 供应商: %s\n", suite->vendor ? suite->vendor : "未知");
+    LOG_DEBUG("[MIDlet套件] 版本: %s\n", suite->version ? suite->version : "未知");
+    LOG_DEBUG("[MIDlet套件] 配置: %s\n", suite->microedition_configuration ? suite->microedition_configuration : "未知");
+    LOG_DEBUG("[MIDlet套件] 配置文件: %s\n", suite->microedition_profile ? suite->microedition_profile : "未知");
     
     // 解析MIDlet列表
     // 格式: MIDlet-1: Name, Icon, ClassName
@@ -777,7 +779,7 @@ j2me_midlet_suite_t* j2me_midlet_suite_create(j2me_jar_file_t* jar_file) {
                     suite->midlets[suite->midlet_count] = midlet;
                     suite->midlet_count++;
                     
-                    printf("[MIDlet套件] MIDlet #%d: %s (类: %s)\n", 
+                    LOG_DEBUG("[MIDlet套件] MIDlet #%d: %s (类: %s)\n", 
                            midlet_index, midlet->name, midlet->class_name);
                 }
             }
@@ -793,7 +795,7 @@ j2me_midlet_suite_t* j2me_midlet_suite_create(j2me_jar_file_t* jar_file) {
     
     suite->jar_file = jar_file;
     
-    printf("[MIDlet套件] MIDlet套件创建完成，共 %d 个MIDlet\n", suite->midlet_count);
+    LOG_DEBUG("[MIDlet套件] MIDlet套件创建完成，共 %d 个MIDlet\n", suite->midlet_count);
     return suite;
 }
 
@@ -837,7 +839,7 @@ void j2me_midlet_suite_destroy(j2me_midlet_suite_t* suite) {
         free(suite->permissions);
     }
     
-    printf("[MIDlet套件] MIDlet套件已销毁\n");
+    LOG_DEBUG("[MIDlet套件] MIDlet套件已销毁\n");
     free(suite);
 }
 
@@ -868,6 +870,21 @@ j2me_midlet_t* j2me_midlet_suite_find_midlet(j2me_midlet_suite_t* suite, const c
     return NULL;
 }
 
+j2me_midlet_t* j2me_midlet_suite_find_midlet_by_class(j2me_midlet_suite_t* suite, const char* class_name) {
+    if (!suite || !class_name) {
+        return NULL;
+    }
+    
+    for (int i = 0; i < suite->midlet_count; i++) {
+        j2me_midlet_t* midlet = suite->midlets[i];
+        if (midlet && midlet->class_name && strcmp(midlet->class_name, class_name) == 0) {
+            return midlet;
+        }
+    }
+    
+    return NULL;
+}
+
 // ============================================================================
 // MIDlet生命周期管理
 // ============================================================================
@@ -877,27 +894,34 @@ j2me_error_t j2me_midlet_start(j2me_vm_t* vm, j2me_midlet_t* midlet) {
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[MIDlet] 启动MIDlet: %s (类: %s)\n", midlet->name, midlet->class_name);
+    LOG_DEBUG("[MIDlet] 启动MIDlet: %s (类: %s)\n", midlet->name, midlet->class_name);
     
     // 创建MIDlet执行器
     j2me_midlet_executor_t* executor = j2me_midlet_executor_create(vm, midlet->jar_file);
     if (!executor) {
-        printf("[MIDlet] 错误: 创建MIDlet执行器失败\n");
+        LOG_DEBUG("[MIDlet] 错误: 创建MIDlet执行器失败\n");
         return J2ME_ERROR_OUT_OF_MEMORY;
     }
     
     // 创建MIDlet实例
     j2me_midlet_instance_t* instance = j2me_midlet_executor_create_instance(executor, midlet);
     if (!instance) {
-        printf("[MIDlet] 错误: 创建MIDlet实例失败\n");
+        LOG_DEBUG("[MIDlet] 错误: 创建MIDlet实例失败\n");
         j2me_midlet_executor_destroy(executor);
         return J2ME_ERROR_CLASS_NOT_FOUND;
     }
     
     // 启动MIDlet实例
+    printf("[MIDlet] 准备启动MIDlet实例...\n");
+    fflush(stdout);
+    
     j2me_error_t result = j2me_midlet_executor_start_instance(executor, instance);
+    
+    printf("[MIDlet] j2me_midlet_executor_start_instance 返回: %d\n", result);
+    fflush(stdout);
+    
     if (result != J2ME_SUCCESS) {
-        printf("[MIDlet] 错误: 启动MIDlet实例失败: %d\n", result);
+        LOG_DEBUG("[MIDlet] 错误: 启动MIDlet实例失败: %d\n", result);
         j2me_midlet_executor_destroy_instance(executor, instance);
         j2me_midlet_executor_destroy(executor);
         return result;
@@ -909,7 +933,7 @@ j2me_error_t j2me_midlet_start(j2me_vm_t* vm, j2me_midlet_t* midlet) {
     midlet->state = MIDLET_STATE_ACTIVE;
     midlet->started = true;
     
-    printf("[MIDlet] MIDlet已启动\n");
+    LOG_DEBUG("[MIDlet] MIDlet已启动\n");
     return J2ME_SUCCESS;
 }
 
@@ -918,21 +942,21 @@ j2me_error_t j2me_midlet_pause(j2me_midlet_t* midlet) {
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[MIDlet] 暂停MIDlet: %s\n", midlet->name);
+    LOG_DEBUG("[MIDlet] 暂停MIDlet: %s\n", midlet->name);
     
     // 调用pauseApp()方法
     if (midlet->instance && midlet->instance->pause_app && midlet->instance->pause_app->bytecode) {
-        printf("[MIDlet] 调用pauseApp()方法\n");
+        LOG_DEBUG("[MIDlet] 调用pauseApp()方法\n");
         // 这里应该通过虚拟机执行pauseApp方法
         // 简化实现：直接标记为已调用
-        printf("[MIDlet] pauseApp()方法调用完成\n");
+        LOG_DEBUG("[MIDlet] pauseApp()方法调用完成\n");
     } else {
-        printf("[MIDlet] 警告: pauseApp()方法未找到或无字节码\n");
+        LOG_DEBUG("[MIDlet] 警告: pauseApp()方法未找到或无字节码\n");
     }
     
     midlet->state = MIDLET_STATE_PAUSED;
     
-    printf("[MIDlet] MIDlet已暂停\n");
+    LOG_DEBUG("[MIDlet] MIDlet已暂停\n");
     return J2ME_SUCCESS;
 }
 
@@ -941,21 +965,21 @@ j2me_error_t j2me_midlet_resume(j2me_midlet_t* midlet) {
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[MIDlet] 恢复MIDlet: %s\n", midlet->name);
+    LOG_DEBUG("[MIDlet] 恢复MIDlet: %s\n", midlet->name);
     
     // 调用startApp()方法
     if (midlet->instance && midlet->instance->start_app && midlet->instance->start_app->bytecode) {
-        printf("[MIDlet] 调用startApp()方法\n");
+        LOG_DEBUG("[MIDlet] 调用startApp()方法\n");
         // 这里应该通过虚拟机执行startApp方法
         // 简化实现：直接标记为已调用
-        printf("[MIDlet] startApp()方法调用完成\n");
+        LOG_DEBUG("[MIDlet] startApp()方法调用完成\n");
     } else {
-        printf("[MIDlet] 警告: startApp()方法未找到或无字节码\n");
+        LOG_DEBUG("[MIDlet] 警告: startApp()方法未找到或无字节码\n");
     }
     
     midlet->state = MIDLET_STATE_ACTIVE;
     
-    printf("[MIDlet] MIDlet已恢复\n");
+    LOG_DEBUG("[MIDlet] MIDlet已恢复\n");
     return J2ME_SUCCESS;
 }
 
@@ -964,7 +988,7 @@ j2me_error_t j2me_midlet_destroy(j2me_midlet_t* midlet) {
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[MIDlet] 销毁MIDlet: %s\n", midlet->name);
+    LOG_DEBUG("[MIDlet] 销毁MIDlet: %s\n", midlet->name);
     
     // 如果MIDlet正在运行，先停止它
     if (midlet->started && midlet->executor && midlet->instance) {
@@ -977,7 +1001,7 @@ j2me_error_t j2me_midlet_destroy(j2me_midlet_t* midlet) {
     midlet->state = MIDLET_STATE_DESTROYED;
     midlet->started = false;
     
-    printf("[MIDlet] MIDlet已销毁\n");
+    LOG_DEBUG("[MIDlet] MIDlet已销毁\n");
     return J2ME_SUCCESS;
 }
 

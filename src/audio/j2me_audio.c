@@ -2,6 +2,7 @@
 #include "j2me_vm.h"
 #include <stdlib.h>
 #include <string.h>
+#include "j2me_log.h"
 #include <stdio.h>
 #include <math.h>
 #include <SDL2/SDL.h>
@@ -49,7 +50,7 @@ j2me_audio_manager_t* j2me_audio_manager_create(j2me_vm_t* vm) {
     manager->channels = DEFAULT_CHANNELS;
     manager->chunk_size = DEFAULT_CHUNK_SIZE;
     
-    printf("[音频系统] 音频管理器创建成功\n");
+    LOG_DEBUG("[音频系统] 音频管理器创建成功\n");
     return manager;
 }
 
@@ -73,7 +74,7 @@ void j2me_audio_manager_destroy(j2me_audio_manager_t* manager) {
     free(manager->players);
     free(manager);
     
-    printf("[音频系统] 音频管理器已销毁\n");
+    LOG_DEBUG("[音频系统] 音频管理器已销毁\n");
 }
 
 j2me_error_t j2me_audio_initialize(j2me_audio_manager_t* manager) {
@@ -83,13 +84,13 @@ j2me_error_t j2me_audio_initialize(j2me_audio_manager_t* manager) {
     
     // 初始化SDL音频子系统
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
-        printf("[音频系统] SDL音频初始化失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[音频系统] SDL音频初始化失败: %s\n", SDL_GetError());
         return J2ME_ERROR_RUNTIME_EXCEPTION;
     }
     
     // 初始化SDL_mixer
     if (Mix_OpenAudio(manager->frequency, manager->format, manager->channels, manager->chunk_size) < 0) {
-        printf("[音频系统] SDL_mixer初始化失败: %s\n", Mix_GetError());
+        LOG_DEBUG("[音频系统] SDL_mixer初始化失败: %s\n", Mix_GetError());
         SDL_QuitSubSystem(SDL_INIT_AUDIO);
         return J2ME_ERROR_RUNTIME_EXCEPTION;
     }
@@ -99,7 +100,7 @@ j2me_error_t j2me_audio_initialize(j2me_audio_manager_t* manager) {
     
     manager->initialized = true;
     
-    printf("[音频系统] 音频系统初始化成功 (频率: %d Hz, 通道: %d, 缓冲: %d)\n",
+    LOG_DEBUG("[音频系统] 音频系统初始化成功 (频率: %d Hz, 通道: %d, 缓冲: %d)\n",
            manager->frequency, manager->channels, manager->chunk_size);
     
     return J2ME_SUCCESS;
@@ -120,7 +121,7 @@ void j2me_audio_shutdown(j2me_audio_manager_t* manager) {
     
     manager->initialized = false;
     
-    printf("[音频系统] 音频系统已关闭\n");
+    LOG_DEBUG("[音频系统] 音频系统已关闭\n");
 }
 
 /**
@@ -182,7 +183,7 @@ j2me_audio_clip_t* j2me_audio_clip_create(j2me_vm_t* vm, const uint8_t* data, si
             if (rw) {
                 clip->sdl_chunk = Mix_LoadWAV_RW(rw, 1); // 1表示自动释放RWops
                 if (!clip->sdl_chunk) {
-                    printf("[音频系统] 加载音频块失败: %s\n", Mix_GetError());
+                    LOG_DEBUG("[音频系统] 加载音频块失败: %s\n", Mix_GetError());
                 }
             }
             break;
@@ -193,18 +194,18 @@ j2me_audio_clip_t* j2me_audio_clip_create(j2me_vm_t* vm, const uint8_t* data, si
             if (rw) {
                 clip->sdl_music = Mix_LoadMUS_RW(rw, 1);
                 if (!clip->sdl_music) {
-                    printf("[音频系统] 加载MIDI失败: %s\n", Mix_GetError());
+                    LOG_DEBUG("[音频系统] 加载MIDI失败: %s\n", Mix_GetError());
                 }
             }
             break;
         }
         
         default:
-            printf("[音频系统] 不支持的音频格式: %d\n", format);
+            LOG_DEBUG("[音频系统] 不支持的音频格式: %d\n", format);
             break;
     }
     
-    printf("[音频系统] 创建音频剪辑: 格式=%s, 大小=%zu bytes\n",
+    LOG_DEBUG("[音频系统] 创建音频剪辑: 格式=%s, 大小=%zu bytes\n",
            j2me_audio_get_format_name(format), size);
     
     return clip;
@@ -215,7 +216,7 @@ j2me_audio_clip_t* j2me_audio_clip_create_from_file(j2me_vm_t* vm, const char* f
         return NULL;
     }
     
-    printf("[音频系统] 从文件创建音频剪辑: %s\n", filename);
+    LOG_DEBUG("[音频系统] 从文件创建音频剪辑: %s\n", filename);
     
     // 尝试直接加载文件
     Mix_Chunk* chunk = Mix_LoadWAV(filename);
@@ -233,12 +234,12 @@ j2me_audio_clip_t* j2me_audio_clip_create_from_file(j2me_vm_t* vm, const char* f
         clip->data = NULL; // 文件直接加载，不需要内存数据
         clip->data_size = 0;
         
-        printf("[音频系统] 文件加载成功: %s\n", filename);
+        LOG_DEBUG("[音频系统] 文件加载成功: %s\n", filename);
         return clip;
     }
     
     // 如果文件不存在，创建一个测试音调
-    printf("[音频系统] 文件不存在，创建测试音调: %s\n", filename);
+    LOG_DEBUG("[音频系统] 文件不存在，创建测试音调: %s\n", filename);
     
     // 生成简单的正弦波音调 (440Hz, 1秒)
     const int sample_rate = 22050;
@@ -305,7 +306,7 @@ j2me_player_t* j2me_player_create(j2me_vm_t* vm, j2me_audio_manager_t* manager, 
     
     int slot = find_free_player_slot(manager);
     if (slot < 0) {
-        printf("[音频系统] 播放器数量已达上限\n");
+        LOG_DEBUG("[音频系统] 播放器数量已达上限\n");
         return NULL;
     }
     
@@ -326,7 +327,7 @@ j2me_player_t* j2me_player_create(j2me_vm_t* vm, j2me_audio_manager_t* manager, 
     manager->players[slot] = player;
     manager->active_players++;
     
-    printf("[音频系统] 创建播放器 #%d\n", slot);
+    LOG_DEBUG("[音频系统] 创建播放器 #%d\n", slot);
     
     return player;
 }
@@ -336,7 +337,7 @@ j2me_player_t* j2me_player_create_from_url(j2me_vm_t* vm, j2me_audio_manager_t* 
         return NULL;
     }
     
-    printf("[音频系统] 从URL创建播放器: %s\n", url);
+    LOG_DEBUG("[音频系统] 从URL创建播放器: %s\n", url);
     
     // 简化实现：创建测试音频
     j2me_audio_clip_t* clip = j2me_audio_clip_create_from_file(vm, url);
@@ -361,7 +362,7 @@ void j2me_player_destroy(j2me_player_t* player) {
     // 只清空引用
     player->clip = NULL;
     
-    printf("[音频系统] 销毁播放器\n");
+    LOG_DEBUG("[音频系统] 销毁播放器\n");
     free(player);
 }
 
@@ -372,13 +373,13 @@ j2me_error_t j2me_player_realize(j2me_player_t* player) {
     
     // 检查音频剪辑是否有效
     if (!player->clip || (!player->clip->sdl_chunk && !player->clip->sdl_music)) {
-        printf("[音频系统] 播放器实现失败：无效的音频剪辑\n");
+        LOG_DEBUG("[音频系统] 播放器实现失败：无效的音频剪辑\n");
         return J2ME_ERROR_RUNTIME_EXCEPTION;
     }
     
     player->state = PLAYER_REALIZED;
     
-    printf("[音频系统] 播放器已实现\n");
+    LOG_DEBUG("[音频系统] 播放器已实现\n");
     return J2ME_SUCCESS;
 }
 
@@ -390,7 +391,7 @@ j2me_error_t j2me_player_prefetch(j2me_player_t* player) {
     // 预取操作 (SDL_mixer会自动处理)
     player->state = PLAYER_PREFETCHED;
     
-    printf("[音频系统] 播放器已预取\n");
+    LOG_DEBUG("[音频系统] 播放器已预取\n");
     return J2ME_SUCCESS;
 }
 
@@ -423,7 +424,7 @@ j2me_error_t j2me_player_start(j2me_player_t* player) {
         int loops = player->looping ? -1 : 0;
         int channel = Mix_PlayChannel(player->channel, player->clip->sdl_chunk, loops);
         if (channel < 0) {
-            printf("[音频系统] 播放失败: %s\n", Mix_GetError());
+            LOG_DEBUG("[音频系统] 播放失败: %s\n", Mix_GetError());
             return J2ME_ERROR_RUNTIME_EXCEPTION;
         }
         
@@ -434,7 +435,7 @@ j2me_error_t j2me_player_start(j2me_player_t* player) {
     } else if (player->clip->sdl_music) {
         int loops = player->looping ? -1 : 0;
         if (Mix_PlayMusic(player->clip->sdl_music, loops) < 0) {
-            printf("[音频系统] 音乐播放失败: %s\n", Mix_GetError());
+            LOG_DEBUG("[音频系统] 音乐播放失败: %s\n", Mix_GetError());
             return J2ME_ERROR_RUNTIME_EXCEPTION;
         }
         
@@ -445,7 +446,7 @@ j2me_error_t j2me_player_start(j2me_player_t* player) {
     
     player->state = PLAYER_STARTED;
     
-    printf("[音频系统] 播放器已开始播放\n");
+    LOG_DEBUG("[音频系统] 播放器已开始播放\n");
     return J2ME_SUCCESS;
 }
 
@@ -463,7 +464,7 @@ j2me_error_t j2me_player_stop(j2me_player_t* player) {
     
     player->state = PLAYER_PREFETCHED;
     
-    printf("[音频系统] 播放器已停止\n");
+    LOG_DEBUG("[音频系统] 播放器已停止\n");
     return J2ME_SUCCESS;
 }
 
@@ -478,7 +479,7 @@ void j2me_player_close(j2me_player_t* player) {
     
     player->state = PLAYER_CLOSED;
     
-    printf("[音频系统] 播放器已关闭\n");
+    LOG_DEBUG("[音频系统] 播放器已关闭\n");
 }
 
 j2me_player_state_t j2me_player_get_state(j2me_player_t* player) {
@@ -503,7 +504,7 @@ void j2me_player_set_volume(j2me_player_t* player, int volume) {
         }
     }
     
-    printf("[音频系统] 设置播放器音量: %d%%\n", player->volume);
+    LOG_DEBUG("[音频系统] 设置播放器音量: %d%%\n", player->volume);
 }
 
 int j2me_player_get_volume(j2me_player_t* player) {
@@ -535,7 +536,7 @@ void j2me_player_set_muted(j2me_player_t* player, bool muted) {
             }
         }
         
-        printf("[音频系统] 设置播放器静音: %s\n", muted ? "是" : "否");
+        LOG_DEBUG("[音频系统] 设置播放器静音: %s\n", muted ? "是" : "否");
     }
 }
 
@@ -551,7 +552,7 @@ int64_t j2me_player_get_media_time(j2me_player_t* player) {
 
 int64_t j2me_player_set_media_time(j2me_player_t* player, int64_t time) {
     // 简化实现：不支持seek
-    printf("[音频系统] Seek功能未实现\n");
+    LOG_DEBUG("[音频系统] Seek功能未实现\n");
     return 0;
 }
 
@@ -645,7 +646,7 @@ void j2me_audio_stop_all(j2me_audio_manager_t* manager) {
         }
     }
     
-    printf("[音频系统] 所有播放器已停止\n");
+    LOG_DEBUG("[音频系统] 所有播放器已停止\n");
 }
 
 j2me_error_t j2me_audio_play_tone(j2me_audio_manager_t* manager, int note, int duration, int volume) {
@@ -653,7 +654,7 @@ j2me_error_t j2me_audio_play_tone(j2me_audio_manager_t* manager, int note, int d
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[音频系统] 播放音调: 音符=%d, 时长=%dms, 音量=%d\n", note, duration, volume);
+    LOG_DEBUG("[音频系统] 播放音调: 音符=%d, 时长=%dms, 音量=%d\n", note, duration, volume);
     
     // 计算频率 (MIDI音符到频率的转换)
     double frequency = 440.0 * pow(2.0, (note - 69) / 12.0);
@@ -744,7 +745,7 @@ void j2me_audio_pause_all(j2me_audio_manager_t* manager) {
     Mix_Pause(-1);
     Mix_PauseMusic();
     
-    printf("[音频系统] 所有播放器已暂停\n");
+    LOG_DEBUG("[音频系统] 所有播放器已暂停\n");
 }
 
 void j2me_audio_resume_all(j2me_audio_manager_t* manager) {
@@ -756,7 +757,7 @@ void j2me_audio_resume_all(j2me_audio_manager_t* manager) {
     Mix_Resume(-1);
     Mix_ResumeMusic();
     
-    printf("[音频系统] 所有播放器已恢复\n");
+    LOG_DEBUG("[音频系统] 所有播放器已恢复\n");
 }
 
 j2me_audio_clip_t* j2me_audio_create_tone_sequence(j2me_vm_t* vm, const uint8_t* sequence, size_t length) {
@@ -764,7 +765,7 @@ j2me_audio_clip_t* j2me_audio_create_tone_sequence(j2me_vm_t* vm, const uint8_t*
         return NULL;
     }
     
-    printf("[音频系统] 创建音调序列: 长度=%zu\n", length);
+    LOG_DEBUG("[音频系统] 创建音调序列: 长度=%zu\n", length);
     
     // 简化的音调序列解析 - 假设每两个字节代表一个音符和持续时间
     const int sample_rate = 22050;

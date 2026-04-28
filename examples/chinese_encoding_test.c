@@ -5,6 +5,7 @@
  * 专门测试中文字符编码和渲染问题的修复
  */
 
+#include "j2me_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,11 +20,11 @@
  * @brief 测试UTF-8编码的中文字符串
  */
 void test_utf8_chinese_strings(j2me_graphics_context_t* context) {
-    printf("\n=== 测试UTF-8中文字符串 ===\n");
+    LOG_DEBUG("\n=== 测试UTF-8中文字符串 ===\n");
     
     // 设置UTF-8 locale
     setlocale(LC_ALL, "");
-    printf("📝 设置UTF-8 locale完成\n");
+    LOG_DEBUG("📝 设置UTF-8 locale完成\n");
     
     // 测试不同类型的中文文本
     const char* test_strings[] = {
@@ -68,8 +69,8 @@ void test_utf8_chinese_strings(j2me_graphics_context_t* context) {
         // 获取文本宽度进行验证
         int text_width = j2me_graphics_get_string_width(context, text);
         
-        printf("🎨 渲染文本 %d: \"%s\"\n", i + 1, text);
-        printf("   位置: (20, %d), 宽度: %d 像素\n", y, text_width);
+        LOG_DEBUG("🎨 渲染文本 %d: \"%s\"\n", i + 1, text);
+        LOG_DEBUG("   位置: (20, %d), 宽度: %d 像素\n", y, text_width);
         
         // 在文本右侧绘制宽度指示线
         j2me_color_t indicator_color = {100, 100, 100, 255};
@@ -77,17 +78,17 @@ void test_utf8_chinese_strings(j2me_graphics_context_t* context) {
         j2me_graphics_draw_line(context, 20 + text_width, y, 20 + text_width, y + 20);
     }
     
-    printf("✅ UTF-8中文字符串测试完成\n");
+    LOG_DEBUG("✅ UTF-8中文字符串测试完成\n");
 }
 
 /**
  * @brief 测试字体对中文字符的支持
  */
 void test_font_chinese_support(j2me_graphics_context_t* context) {
-    printf("\n=== 测试字体中文字符支持 ===\n");
+    LOG_DEBUG("\n=== 测试字体中文字符支持 ===\n");
     
     if (!context->current_font.ttf_font) {
-        printf("❌ 当前没有加载TTF字体\n");
+        LOG_DEBUG("❌ 当前没有加载TTF字体\n");
         return;
     }
     
@@ -100,8 +101,8 @@ void test_font_chinese_support(j2me_graphics_context_t* context) {
         NULL
     };
     
-    printf("📝 测试字体: %s\n", context->current_font.name);
-    printf("📏 字体大小: %d\n", context->current_font.size);
+    LOG_DEBUG("📝 测试字体: %s\n", context->current_font.name);
+    LOG_DEBUG("📏 字体大小: %d\n", context->current_font.size);
     
     // 清除屏幕
     j2me_graphics_clear(context);
@@ -132,18 +133,18 @@ void test_font_chinese_support(j2me_graphics_context_t* context) {
         // 测试字符宽度
         int char_width = j2me_graphics_get_string_width(context, chinese_chars[i]);
         if (i < 8) { // 只打印前8个字符的信息
-            printf("   字符 '%s': 宽度 %d 像素\n", chinese_chars[i], char_width);
+            LOG_DEBUG("   字符 '%s': 宽度 %d 像素\n", chinese_chars[i], char_width);
         }
     }
     
-    printf("✅ 字体中文字符支持测试完成\n");
+    LOG_DEBUG("✅ 字体中文字符支持测试完成\n");
 }
 
 /**
  * @brief 测试不同字体大小的中文渲染
  */
 void test_chinese_font_sizes(j2me_graphics_context_t* context) {
-    printf("\n=== 测试不同字体大小的中文渲染 ===\n");
+    LOG_DEBUG("\n=== 测试不同字体大小的中文渲染 ===\n");
     
     // 清除屏幕
     j2me_graphics_clear(context);
@@ -169,24 +170,24 @@ void test_chinese_font_sizes(j2me_graphics_context_t* context) {
         snprintf(size_info, sizeof(size_info), "%d像素", sizes[i]);
         j2me_graphics_draw_string(context, size_info, 350, y, 0x00);
         
-        printf("📏 字体大小 %d: 高度 %d 像素\n", 
+        LOG_DEBUG("📏 字体大小 %d: 高度 %d 像素\n", 
                sizes[i], j2me_graphics_get_font_height(context));
     }
     
-    printf("✅ 不同字体大小测试完成\n");
+    LOG_DEBUG("✅ 不同字体大小测试完成\n");
 }
 
 /**
  * @brief 中文编码修复验证演示
  */
 void chinese_encoding_demo(j2me_vm_t* vm) {
-    printf("\n=== 中文编码修复验证演示 ===\n");
-    printf("🎮 控制说明:\n");
-    printf("   - 数字键 1-3: 切换不同测试\n");
-    printf("   - ESC键: 退出演示\n\n");
+    LOG_DEBUG("\n=== 中文编码修复验证演示 ===\n");
+    LOG_DEBUG("🎮 控制说明:\n");
+    LOG_DEBUG("   - 数字键 1-3: 切换不同测试\n");
+    LOG_DEBUG("   - ESC键: 退出演示\n\n");
     
     if (!vm->display || !vm->display->context) {
-        printf("❌ 图形上下文未初始化\n");
+        LOG_DEBUG("❌ 图形上下文未初始化\n");
         return;
     }
     
@@ -210,7 +211,7 @@ void chinese_encoding_demo(j2me_vm_t* vm) {
             for (int i = 1; i <= 3; i++) {
                 if (j2me_input_is_key_pressed(vm->input_manager, KEY_NUM0 + i)) {
                     demo_mode = i;
-                    printf("🔄 切换到测试模式 %d\n", demo_mode);
+                    LOG_DEBUG("🔄 切换到测试模式 %d\n", demo_mode);
                 }
             }
         }
@@ -249,24 +250,24 @@ void chinese_encoding_demo(j2me_vm_t* vm) {
         // 每个模式显示5秒后自动切换（演示模式）
         if (frame_count % 150 == 0) {
             demo_mode = (demo_mode % 3) + 1;
-            printf("🔄 自动切换到测试模式 %d\n", demo_mode);
+            LOG_DEBUG("🔄 自动切换到测试模式 %d\n", demo_mode);
         }
     }
     
-    printf("✅ 中文编码修复验证演示结束\n");
+    LOG_DEBUG("✅ 中文编码修复验证演示结束\n");
 }
 
 /**
  * @brief 主测试函数
  */
 int main() {
-    printf("中文字符编码修复测试程序\n");
-    printf("========================\n");
-    printf("测试UTF-8中文字符编码和渲染修复\n\n");
+    LOG_DEBUG("中文字符编码修复测试程序\n");
+    LOG_DEBUG("========================\n");
+    LOG_DEBUG("测试UTF-8中文字符编码和渲染修复\n\n");
     
     // 设置UTF-8环境
     setlocale(LC_ALL, "");
-    printf("🌐 设置UTF-8 locale环境\n");
+    LOG_DEBUG("🌐 设置UTF-8 locale环境\n");
     
     // 创建虚拟机配置
     j2me_vm_config_t config = {
@@ -278,22 +279,22 @@ int main() {
     // 创建虚拟机
     j2me_vm_t* vm = j2me_vm_create(&config);
     if (!vm) {
-        printf("❌ 创建虚拟机失败\n");
+        LOG_DEBUG("❌ 创建虚拟机失败\n");
         return 1;
     }
-    printf("✅ 虚拟机创建成功\n");
+    LOG_DEBUG("✅ 虚拟机创建成功\n");
     
     // 初始化虚拟机
     j2me_error_t result = j2me_vm_initialize(vm);
     if (result != J2ME_SUCCESS) {
-        printf("❌ 虚拟机初始化失败: %d\n", result);
+        LOG_DEBUG("❌ 虚拟机初始化失败: %d\n", result);
         j2me_vm_destroy(vm);
         return 1;
     }
-    printf("✅ 虚拟机初始化成功\n");
+    LOG_DEBUG("✅ 虚拟机初始化成功\n");
     
     if (!vm->display || !vm->display->context) {
-        printf("❌ 图形上下文未初始化\n");
+        LOG_DEBUG("❌ 图形上下文未初始化\n");
         j2me_vm_destroy(vm);
         return 1;
     }
@@ -301,33 +302,33 @@ int main() {
     j2me_graphics_context_t* context = vm->display->context;
     
     // 显示当前字体信息
-    printf("\n📋 当前字体信息:\n");
-    printf("   字体名称: %s\n", context->current_font.name);
-    printf("   字体大小: %d\n", context->current_font.size);
-    printf("   TTF字体: %s\n", context->current_font.ttf_font ? "已加载" : "未加载");
+    LOG_DEBUG("\n📋 当前字体信息:\n");
+    LOG_DEBUG("   字体名称: %s\n", context->current_font.name);
+    LOG_DEBUG("   字体大小: %d\n", context->current_font.size);
+    LOG_DEBUG("   TTF字体: %s\n", context->current_font.ttf_font ? "已加载" : "未加载");
     
-    printf("\n⏳ 等待3秒后开始中文编码测试...\n");
+    LOG_DEBUG("\n⏳ 等待3秒后开始中文编码测试...\n");
     sleep(3);
     
     // 运行中文编码修复验证演示
     chinese_encoding_demo(vm);
     
-    printf("\n⏳ 等待3秒以查看最终结果...\n");
+    LOG_DEBUG("\n⏳ 等待3秒以查看最终结果...\n");
     sleep(3);
     
     // 清理虚拟机
     j2me_vm_destroy(vm);
     
-    printf("\n=== 中文编码修复测试总结 ===\n");
-    printf("✅ UTF-8编码支持: TTF_RenderUTF8_Blended()函数应用\n");
-    printf("✅ 中文字体优先: 更新字体加载顺序，优先中文字体\n");
-    printf("✅ 字符串度量: TTF_SizeUTF8()函数支持中文宽度计算\n");
-    printf("✅ 多字体支持: 扩展中文字体路径列表\n");
-    printf("✅ 编码兼容: UTF-8和普通文本渲染双重支持\n");
-    printf("✅ 错误处理: 渲染失败时的回退机制\n");
+    LOG_DEBUG("\n=== 中文编码修复测试总结 ===\n");
+    LOG_DEBUG("✅ UTF-8编码支持: TTF_RenderUTF8_Blended()函数应用\n");
+    LOG_DEBUG("✅ 中文字体优先: 更新字体加载顺序，优先中文字体\n");
+    LOG_DEBUG("✅ 字符串度量: TTF_SizeUTF8()函数支持中文宽度计算\n");
+    LOG_DEBUG("✅ 多字体支持: 扩展中文字体路径列表\n");
+    LOG_DEBUG("✅ 编码兼容: UTF-8和普通文本渲染双重支持\n");
+    LOG_DEBUG("✅ 错误处理: 渲染失败时的回退机制\n");
     
-    printf("\n🎉 中文字符编码修复测试完成！\n");
-    printf("💡 现在应该能够正确显示中文字符，不再出现乱码！\n");
+    LOG_DEBUG("\n🎉 中文字符编码修复测试完成！\n");
+    LOG_DEBUG("💡 现在应该能够正确显示中文字符，不再出现乱码！\n");
     
     return 0;
 }

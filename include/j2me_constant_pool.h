@@ -23,7 +23,7 @@ typedef struct {
         j2me_object_t* object_ref;
         j2me_class_t* class_ref;
         const char* string_value;
-    };
+    } data;
 } j2me_constant_value_t;
 
 /**

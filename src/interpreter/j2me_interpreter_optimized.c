@@ -16,6 +16,7 @@
 #include "j2me_native_methods.h"
 #include <stdlib.h>
 #include <string.h>
+#include "j2me_log.h"
 #include <stdio.h>
 #include <time.h>
 
@@ -666,42 +667,42 @@ void j2me_performance_stats_print_report(j2me_performance_stats_t* stats) {
     j2me_double instructions_per_second = j2me_performance_stats_get_instructions_per_second(stats);
     j2me_double cache_hit_rate = j2me_performance_stats_get_cache_hit_rate(stats);
     
-    printf("\n=== 优化解释器性能统计报告 ===\n");
-    printf("📊 执行统计:\n");
-    printf("   总指令数: %lld\n", stats->total_instructions);
-    printf("   总执行时间: %lld 微秒\n", total_time);
-    printf("   执行速度: %.2f M指令/秒\n", instructions_per_second / 1000000.0);
-    printf("   平均指令延迟: %.3f 微秒\n", 
+    LOG_DEBUG("\n=== 优化解释器性能统计报告 ===\n");
+    LOG_DEBUG("📊 执行统计:\n");
+    LOG_DEBUG("   总指令数: %lld\n", stats->total_instructions);
+    LOG_DEBUG("   总执行时间: %lld 微秒\n", total_time);
+    LOG_DEBUG("   执行速度: %.2f M指令/秒\n", instructions_per_second / 1000000.0);
+    LOG_DEBUG("   平均指令延迟: %.3f 微秒\n", 
            total_time > 0 ? (double)stats->total_cycles / stats->total_instructions : 0.0);
     
-    printf("\n📞 方法调用统计:\n");
-    printf("   方法调用次数: %lld\n", stats->method_calls);
-    printf("   平均每方法指令数: %.1f\n", 
+    LOG_DEBUG("\n📞 方法调用统计:\n");
+    LOG_DEBUG("   方法调用次数: %lld\n", stats->method_calls);
+    LOG_DEBUG("   平均每方法指令数: %.1f\n", 
            stats->method_calls > 0 ? (double)stats->total_instructions / stats->method_calls : 0.0);
     
-    printf("\n🎯 缓存统计:\n");
-    printf("   缓存命中: %lld\n", stats->cache_hits);
-    printf("   缓存未命中: %lld\n", stats->cache_misses);
-    printf("   缓存命中率: %.1f%%\n", cache_hit_rate * 100.0);
+    LOG_DEBUG("\n🎯 缓存统计:\n");
+    LOG_DEBUG("   缓存命中: %lld\n", stats->cache_hits);
+    LOG_DEBUG("   缓存未命中: %lld\n", stats->cache_misses);
+    LOG_DEBUG("   缓存命中率: %.1f%%\n", cache_hit_rate * 100.0);
     
-    printf("\n🔥 热点编译统计:\n");
-    printf("   热点编译次数: %lld\n", stats->hotspot_compilations);
+    LOG_DEBUG("\n🔥 热点编译统计:\n");
+    LOG_DEBUG("   热点编译次数: %lld\n", stats->hotspot_compilations);
     
-    printf("\n⚡ 性能评估:\n");
+    LOG_DEBUG("\n⚡ 性能评估:\n");
     if (instructions_per_second > 500000000) {
-        printf("   🟢 执行性能: 优秀 (>500M指令/秒)\n");
+        LOG_DEBUG("   🟢 执行性能: 优秀 (>500M指令/秒)\n");
     } else if (instructions_per_second > 100000000) {
-        printf("   🟡 执行性能: 良好 (>100M指令/秒)\n");
+        LOG_DEBUG("   🟡 执行性能: 良好 (>100M指令/秒)\n");
     } else {
-        printf("   🔴 执行性能: 需要优化 (<100M指令/秒)\n");
+        LOG_DEBUG("   🔴 执行性能: 需要优化 (<100M指令/秒)\n");
     }
     
     if (cache_hit_rate > 0.8) {
-        printf("   🟢 缓存效率: 优秀 (>80%%命中率)\n");
+        LOG_DEBUG("   🟢 缓存效率: 优秀 (>80%%命中率)\n");
     } else if (cache_hit_rate > 0.6) {
-        printf("   🟡 缓存效率: 良好 (>60%%命中率)\n");
+        LOG_DEBUG("   🟡 缓存效率: 良好 (>60%%命中率)\n");
     } else {
-        printf("   🔴 缓存效率: 需要优化 (<60%%命中率)\n");
+        LOG_DEBUG("   🔴 缓存效率: 需要优化 (<60%%命中率)\n");
     }
 }
 

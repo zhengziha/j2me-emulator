@@ -2,6 +2,7 @@
 #include "j2me_object.h"
 #include <stdlib.h>
 #include <string.h>
+#include "j2me_log.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -33,14 +34,14 @@ j2me_midp_graphics_t* j2me_midp_graphics_create(j2me_graphics_context_t* base_co
     graphics->text_antialiasing = true;
     graphics->current_font = NULL; // 将使用默认字体
     
-    printf("[MIDP图形] 创建MIDP图形上下文\n");
+    LOG_DEBUG("[MIDP图形] 创建MIDP图形上下文\n");
     return graphics;
 }
 
 void j2me_midp_graphics_destroy(j2me_midp_graphics_t* graphics) {
     if (graphics) {
         free(graphics);
-        printf("[MIDP图形] 销毁MIDP图形上下文\n");
+        LOG_DEBUG("[MIDP图形] 销毁MIDP图形上下文\n");
     }
 }
 
@@ -204,7 +205,7 @@ void j2me_midp_graphics_draw_round_rect(j2me_midp_graphics_t* graphics, int x, i
         }
     }
     
-    printf("[MIDP图形] 绘制圆角矩形 (%d,%d,%dx%d) 圆角(%dx%d)\n", 
+    LOG_DEBUG("[MIDP图形] 绘制圆角矩形 (%d,%d,%dx%d) 圆角(%dx%d)\n", 
            x, y, width, height, arc_width, arc_height);
 }
 
@@ -279,7 +280,7 @@ void j2me_midp_graphics_fill_round_rect(j2me_midp_graphics_t* graphics, int x, i
         }
     }
     
-    printf("[MIDP图形] 填充圆角矩形 (%d,%d,%dx%d) 圆角(%dx%d)\n", 
+    LOG_DEBUG("[MIDP图形] 填充圆角矩形 (%d,%d,%dx%d) 圆角(%dx%d)\n", 
            x, y, width, height, arc_width, arc_height);
 }
 
@@ -416,7 +417,7 @@ void j2me_midp_graphics_draw_string(j2me_midp_graphics_t* graphics, const char* 
         current_x += 8; // 字符宽度
     }
     
-    printf("[MIDP图形] 绘制字符串: \"%s\" 位置(%d,%d) 锚点=0x%x\n", str, x, y, anchor);
+    LOG_DEBUG("[MIDP图形] 绘制字符串: \"%s\" 位置(%d,%d) 锚点=0x%x\n", str, x, y, anchor);
 }
 
 void j2me_midp_graphics_draw_char(j2me_midp_graphics_t* graphics, char ch, int x, int y, int anchor) {
@@ -468,7 +469,7 @@ void j2me_midp_graphics_draw_image(j2me_midp_graphics_t* graphics, j2me_midp_ima
     // 简化实现：绘制图像边框
     j2me_graphics_draw_rect(graphics->base_context, draw_x, draw_y, img_width, img_height, false);
     
-    printf("[MIDP图形] 绘制图像: %dx%d 位置(%d,%d) 锚点=0x%x\n", 
+    LOG_DEBUG("[MIDP图形] 绘制图像: %dx%d 位置(%d,%d) 锚点=0x%x\n", 
            img_width, img_height, x, y, anchor);
 }
 
@@ -565,7 +566,7 @@ j2me_midp_font_t* j2me_midp_font_create(j2me_vm_t* vm, int face, int style, int 
     
     font->baseline = font->height * 3 / 4;
     
-    printf("[MIDP图形] 创建字体: face=%d, style=%d, size=%d, height=%d\n", 
+    LOG_DEBUG("[MIDP图形] 创建字体: face=%d, style=%d, size=%d, height=%d\n", 
            face, style, size, font->height);
     
     return font;
@@ -653,7 +654,7 @@ j2me_midp_image_t* j2me_midp_image_create(j2me_vm_t* vm, int width, int height) 
     image->height = height;
     image->is_mutable = true;
     
-    printf("[MIDP图形] 创建图像: %dx%d\n", width, height);
+    LOG_DEBUG("[MIDP图形] 创建图像: %dx%d\n", width, height);
     
     return image;
 }
@@ -667,7 +668,7 @@ j2me_midp_image_t* j2me_midp_image_create_from_file(j2me_vm_t* vm, const char* f
     j2me_midp_image_t* image = j2me_midp_image_create(vm, 64, 64);
     if (image) {
         image->is_mutable = false;
-        printf("[MIDP图形] 从文件创建图像: %s (简化为64x64)\n", filename);
+        LOG_DEBUG("[MIDP图形] 从文件创建图像: %s (简化为64x64)\n", filename);
     }
     
     return image;
@@ -690,11 +691,27 @@ j2me_midp_graphics_t* j2me_midp_image_get_graphics(j2me_midp_image_t* image) {
         return NULL;
     }
     
-    if (!image->graphics) {
+    if (!image->graphics && image->surface) {
         // 为可变图像创建图形上下文
-        // 这里需要一个基于SDL表面的图形上下文
-        // 简化实现：返回NULL
-        printf("[MIDP图形] 获取图像图形上下文 (未实现)\n");
+        // 注意：这需要一个SDL_Renderer，但图像只有SDL_Surface
+        // 简化实现：创建一个基本的图形上下文
+        j2me_graphics_context_t* base_context = (j2me_graphics_context_t*)malloc(sizeof(j2me_graphics_context_t));
+        if (base_context) {
+            memset(base_context, 0, sizeof(j2me_graphics_context_t));
+            // 注意：这里没有renderer，所以某些操作可能无法执行
+            // 但我们可以设置基本属性
+            base_context->width = image->width;
+            base_context->height = image->height;
+            base_context->current_color = (j2me_color_t){255, 255, 255, 255};
+            base_context->clip_x = 0;
+            base_context->clip_y = 0;
+            base_context->clip_width = image->width;
+            base_context->clip_height = image->height;
+            base_context->clipping_enabled = true;
+            
+            image->graphics = j2me_midp_graphics_create(base_context);
+            LOG_DEBUG("[MIDP图形] 为可变图像创建图形上下文: %dx%d\n", image->width, image->height);
+        }
     }
     
     return image->graphics;

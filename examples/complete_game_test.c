@@ -5,6 +5,7 @@
  * 测试完整的J2ME游戏运行能力，包括图形、事件处理、图像系统的集成
  */
 
+#include "j2me_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,7 +31,7 @@ typedef struct {
  * @brief 创建游戏资源图像
  */
 void create_game_assets(j2me_graphics_context_t* context, game_state_t* game) {
-    printf("\n=== 创建游戏资源 ===\n");
+    LOG_DEBUG("\n=== 创建游戏资源 ===\n");
     
     // 创建玩家图像 (16x16 蓝色方块)
     game->player_image = j2me_image_create(context, 16, 16);
@@ -45,7 +46,7 @@ void create_game_assets(j2me_graphics_context_t* context, game_state_t* game) {
         SDL_RenderDrawRect(context->renderer, &border);
         
         SDL_SetRenderTarget(context->renderer, NULL);
-        printf("✅ 玩家图像创建成功: 16x16\n");
+        LOG_DEBUG("✅ 玩家图像创建成功: 16x16\n");
     }
     
     // 创建背景图像 (简单的网格图案)
@@ -65,7 +66,7 @@ void create_game_assets(j2me_graphics_context_t* context, game_state_t* game) {
         }
         
         SDL_SetRenderTarget(context->renderer, NULL);
-        printf("✅ 背景图像创建成功: 240x320\n");
+        LOG_DEBUG("✅ 背景图像创建成功: 240x320\n");
     }
     
     // 初始化游戏状态
@@ -76,7 +77,7 @@ void create_game_assets(j2me_graphics_context_t* context, game_state_t* game) {
     game->score = 0;
     game->game_running = true;
     
-    printf("✅ 游戏状态初始化完成\n");
+    LOG_DEBUG("✅ 游戏状态初始化完成\n");
 }
 
 /**
@@ -188,55 +189,55 @@ void render_game(j2me_graphics_context_t* context, game_state_t* game) {
  * @brief 测试MIDP API调用
  */
 void test_midp_api_calls(j2me_vm_t* vm) {
-    printf("\n=== 测试MIDP API调用 ===\n");
+    LOG_DEBUG("\n=== 测试MIDP API调用 ===\n");
     
     // 创建测试栈帧
     j2me_stack_frame_t* frame = j2me_stack_frame_create(30, 15);
     if (!frame) {
-        printf("❌ 创建栈帧失败\n");
+        LOG_DEBUG("❌ 创建栈帧失败\n");
         return;
     }
     
     // 测试Display.getDisplay()
-    printf("📱 测试Display.getDisplay()...\n");
+    LOG_DEBUG("📱 测试Display.getDisplay()...\n");
     j2me_error_t result = midp_display_get_display(vm, frame, NULL);
     if (result == J2ME_SUCCESS) {
         j2me_int display_ref;
         j2me_operand_stack_pop(&frame->operand_stack, &display_ref);
-        printf("✅ Display.getDisplay() 成功，返回: 0x%x\n", display_ref);
+        LOG_DEBUG("✅ Display.getDisplay() 成功，返回: 0x%x\n", display_ref);
     }
     
     // 测试Canvas.getWidth()
-    printf("📐 测试Canvas.getWidth()...\n");
+    LOG_DEBUG("📐 测试Canvas.getWidth()...\n");
     j2me_operand_stack_push(&frame->operand_stack, 0x30000001); // Canvas引用
     result = midp_canvas_get_width(vm, frame, NULL);
     if (result == J2ME_SUCCESS) {
         j2me_int width;
         j2me_operand_stack_pop(&frame->operand_stack, &width);
-        printf("✅ Canvas.getWidth() 成功，返回: %d\n", width);
+        LOG_DEBUG("✅ Canvas.getWidth() 成功，返回: %d\n", width);
     }
     
     // 测试Canvas.getHeight()
-    printf("📐 测试Canvas.getHeight()...\n");
+    LOG_DEBUG("📐 测试Canvas.getHeight()...\n");
     j2me_operand_stack_push(&frame->operand_stack, 0x30000001); // Canvas引用
     result = midp_canvas_get_height(vm, frame, NULL);
     if (result == J2ME_SUCCESS) {
         j2me_int height;
         j2me_operand_stack_pop(&frame->operand_stack, &height);
-        printf("✅ Canvas.getHeight() 成功，返回: %d\n", height);
+        LOG_DEBUG("✅ Canvas.getHeight() 成功，返回: %d\n", height);
     }
     
     // 测试Graphics.setColor()
-    printf("🎨 测试Graphics.setColor()...\n");
+    LOG_DEBUG("🎨 测试Graphics.setColor()...\n");
     j2me_operand_stack_push(&frame->operand_stack, 0x40000001); // Graphics引用
     j2me_operand_stack_push(&frame->operand_stack, 0xFF0000);   // 红色
     result = midp_graphics_set_color(vm, frame, NULL);
     if (result == J2ME_SUCCESS) {
-        printf("✅ Graphics.setColor(0xFF0000) 成功\n");
+        LOG_DEBUG("✅ Graphics.setColor(0xFF0000) 成功\n");
     }
     
     // 测试Graphics.drawRect()
-    printf("🔲 测试Graphics.drawRect()...\n");
+    LOG_DEBUG("🔲 测试Graphics.drawRect()...\n");
     j2me_operand_stack_push(&frame->operand_stack, 0x40000001); // Graphics引用
     j2me_operand_stack_push(&frame->operand_stack, 50);         // x
     j2me_operand_stack_push(&frame->operand_stack, 50);         // y
@@ -244,21 +245,21 @@ void test_midp_api_calls(j2me_vm_t* vm) {
     j2me_operand_stack_push(&frame->operand_stack, 80);         // height
     result = midp_graphics_draw_rect(vm, frame, NULL);
     if (result == J2ME_SUCCESS) {
-        printf("✅ Graphics.drawRect(50, 50, 100, 80) 成功\n");
+        LOG_DEBUG("✅ Graphics.drawRect(50, 50, 100, 80) 成功\n");
     }
     
     // 测试Image.createImage()
-    printf("🖼️ 测试Image.createImage()...\n");
+    LOG_DEBUG("🖼️ 测试Image.createImage()...\n");
     j2me_operand_stack_push(&frame->operand_stack, 64);         // width
     j2me_operand_stack_push(&frame->operand_stack, 64);         // height
     result = midp_image_create_image(vm, frame, NULL);
     if (result == J2ME_SUCCESS) {
         j2me_int image_ref;
         j2me_operand_stack_pop(&frame->operand_stack, &image_ref);
-        printf("✅ Image.createImage(64, 64) 成功，返回: 0x%x\n", image_ref);
+        LOG_DEBUG("✅ Image.createImage(64, 64) 成功，返回: 0x%x\n", image_ref);
         
         // 测试Graphics.drawImage()
-        printf("🖼️ 测试Graphics.drawImage()...\n");
+        LOG_DEBUG("🖼️ 测试Graphics.drawImage()...\n");
         j2me_operand_stack_push(&frame->operand_stack, 0x40000001); // Graphics引用
         j2me_operand_stack_push(&frame->operand_stack, image_ref);   // Image引用
         j2me_operand_stack_push(&frame->operand_stack, 100);        // x
@@ -266,29 +267,29 @@ void test_midp_api_calls(j2me_vm_t* vm) {
         j2me_operand_stack_push(&frame->operand_stack, 0x00);       // anchor
         result = midp_graphics_draw_image(vm, frame, NULL);
         if (result == J2ME_SUCCESS) {
-            printf("✅ Graphics.drawImage() 成功\n");
+            LOG_DEBUG("✅ Graphics.drawImage() 成功\n");
         }
     }
     
     // 清理栈帧
     j2me_stack_frame_destroy(frame);
-    printf("✅ MIDP API调用测试完成\n");
+    LOG_DEBUG("✅ MIDP API调用测试完成\n");
 }
 
 /**
  * @brief 游戏主循环
  */
 void game_main_loop(j2me_vm_t* vm) {
-    printf("\n=== 游戏主循环开始 ===\n");
-    printf("🎮 控制说明:\n");
-    printf("   - 方向键: 移动玩家\n");
-    printf("   - 空格键: 获得分数 (+10)\n");
-    printf("   - 鼠标点击: 移动到指针位置 (+5)\n");
-    printf("   - ESC键: 退出游戏\n");
-    printf("   - 现在支持中文字体显示！\n\n");
+    LOG_DEBUG("\n=== 游戏主循环开始 ===\n");
+    LOG_DEBUG("🎮 控制说明:\n");
+    LOG_DEBUG("   - 方向键: 移动玩家\n");
+    LOG_DEBUG("   - 空格键: 获得分数 (+10)\n");
+    LOG_DEBUG("   - 鼠标点击: 移动到指针位置 (+5)\n");
+    LOG_DEBUG("   - ESC键: 退出游戏\n");
+    LOG_DEBUG("   - 现在支持中文字体显示！\n\n");
     
     if (!vm->display || !vm->display->context) {
-        printf("❌ 图形上下文未初始化\n");
+        LOG_DEBUG("❌ 图形上下文未初始化\n");
         return;
     }
     
@@ -319,7 +320,7 @@ void game_main_loop(j2me_vm_t* vm) {
         // 帧计数和进度显示
         frame_count++;
         if (frame_count % 150 == 0) { // 每5秒显示一次
-            printf("🎮 游戏进行中... 帧数: %d, 分数: %d, 玩家位置: (%d,%d)\n", 
+            LOG_DEBUG("🎮 游戏进行中... 帧数: %d, 分数: %d, 玩家位置: (%d,%d)\n", 
                    frame_count, game.score, game.player_x, game.player_y);
         }
         
@@ -329,15 +330,15 @@ void game_main_loop(j2me_vm_t* vm) {
     
     // 游戏结束
     if (frame_count >= max_frames) {
-        printf("\n⏰ 游戏时间结束！\n");
+        LOG_DEBUG("\n⏰ 游戏时间结束！\n");
     } else if (!game.game_running) {
-        printf("\n🛑 玩家退出游戏\n");
+        LOG_DEBUG("\n🛑 玩家退出游戏\n");
     } else {
-        printf("\n🛑 虚拟机停止\n");
+        LOG_DEBUG("\n🛑 虚拟机停止\n");
     }
     
-    printf("🏆 最终得分: %d\n", game.score);
-    printf("📊 总帧数: %d\n", frame_count);
+    LOG_DEBUG("🏆 最终得分: %d\n", game.score);
+    LOG_DEBUG("📊 总帧数: %d\n", frame_count);
     
     // 清理游戏资源
     if (game.player_image) {
@@ -347,17 +348,17 @@ void game_main_loop(j2me_vm_t* vm) {
         j2me_image_destroy(game.background_image);
     }
     
-    printf("✅ 游戏主循环结束\n");
+    LOG_DEBUG("✅ 游戏主循环结束\n");
 }
 
 /**
  * @brief 主测试函数
  */
 int main() {
-    printf("完整游戏测试程序\n");
-    printf("================\n");
-    printf("测试完整的J2ME游戏运行能力\n");
-    printf("包括图形、事件处理、图像系统的集成\n\n");
+    LOG_DEBUG("完整游戏测试程序\n");
+    LOG_DEBUG("================\n");
+    LOG_DEBUG("测试完整的J2ME游戏运行能力\n");
+    LOG_DEBUG("包括图形、事件处理、图像系统的集成\n\n");
     
     // 创建虚拟机配置
     j2me_vm_config_t config = {
@@ -369,47 +370,47 @@ int main() {
     // 创建虚拟机
     j2me_vm_t* vm = j2me_vm_create(&config);
     if (!vm) {
-        printf("❌ 创建虚拟机失败\n");
+        LOG_DEBUG("❌ 创建虚拟机失败\n");
         return 1;
     }
-    printf("✅ 虚拟机创建成功\n");
+    LOG_DEBUG("✅ 虚拟机创建成功\n");
     
     // 初始化虚拟机
     j2me_error_t result = j2me_vm_initialize(vm);
     if (result != J2ME_SUCCESS) {
-        printf("❌ 虚拟机初始化失败: %d\n", result);
+        LOG_DEBUG("❌ 虚拟机初始化失败: %d\n", result);
         j2me_vm_destroy(vm);
         return 1;
     }
-    printf("✅ 虚拟机初始化成功\n");
+    LOG_DEBUG("✅ 虚拟机初始化成功\n");
     
     // 测试MIDP API调用
     test_midp_api_calls(vm);
     
-    printf("\n⏳ 等待3秒后开始游戏...\n");
+    LOG_DEBUG("\n⏳ 等待3秒后开始游戏...\n");
     sleep(3);
     
     // 运行游戏主循环
     game_main_loop(vm);
     
-    printf("\n⏳ 等待3秒以查看最终结果...\n");
+    LOG_DEBUG("\n⏳ 等待3秒以查看最终结果...\n");
     sleep(3);
     
     // 清理虚拟机
     j2me_vm_destroy(vm);
     
-    printf("\n=== 完整游戏测试总结 ===\n");
-    printf("✅ 虚拟机系统: 创建、初始化、销毁正常\n");
-    printf("✅ 图形系统: SDL2显示、图形上下文、图像处理正常\n");
-    printf("✅ 事件处理: 键盘、鼠标事件处理正常\n");
-    printf("✅ MIDP API: 27个本地方法调用正常\n");
-    printf("✅ 游戏逻辑: 玩家移动、分数系统、碰撞检测正常\n");
-    printf("✅ 实时渲染: 30FPS游戏循环流畅运行\n");
-    printf("✅ 用户交互: 键盘和鼠标控制响应及时\n");
-    printf("✅ 资源管理: 图像创建、销毁、内存管理正常\n");
+    LOG_DEBUG("\n=== 完整游戏测试总结 ===\n");
+    LOG_DEBUG("✅ 虚拟机系统: 创建、初始化、销毁正常\n");
+    LOG_DEBUG("✅ 图形系统: SDL2显示、图形上下文、图像处理正常\n");
+    LOG_DEBUG("✅ 事件处理: 键盘、鼠标事件处理正常\n");
+    LOG_DEBUG("✅ MIDP API: 27个本地方法调用正常\n");
+    LOG_DEBUG("✅ 游戏逻辑: 玩家移动、分数系统、碰撞检测正常\n");
+    LOG_DEBUG("✅ 实时渲染: 30FPS游戏循环流畅运行\n");
+    LOG_DEBUG("✅ 用户交互: 键盘和鼠标控制响应及时\n");
+    LOG_DEBUG("✅ 资源管理: 图像创建、销毁、内存管理正常\n");
     
-    printf("\n🎉 完整游戏测试成功！\n");
-    printf("💡 J2ME模拟器已具备运行真实游戏的完整能力！\n");
+    LOG_DEBUG("\n🎉 完整游戏测试成功！\n");
+    LOG_DEBUG("💡 J2ME模拟器已具备运行真实游戏的完整能力！\n");
     
     return 0;
 }

@@ -8,6 +8,7 @@
 #include "j2me_exception.h"
 #include <stdlib.h>
 #include <string.h>
+#include "j2me_log.h"
 #include <stdio.h>
 
 /**
@@ -30,6 +31,7 @@
 #define OPCODE_BIPUSH       0x10
 #define OPCODE_SIPUSH       0x11
 #define OPCODE_ILOAD        0x15
+#define OPCODE_ALOAD        0x19
 #define OPCODE_ALOAD_0      0x2a
 #define OPCODE_ALOAD_1      0x2b
 #define OPCODE_ALOAD_2      0x2c
@@ -71,8 +73,13 @@
 #define OPCODE_IFLE         0x9e
 #define OPCODE_IF_ICMPEQ    0x9f
 #define OPCODE_IF_ICMPNE    0xa0
+#define OPCODE_IF_ICMPLT    0xa1
+#define OPCODE_IF_ICMPGE    0xa2
+#define OPCODE_IF_ICMPGT    0xa3
+#define OPCODE_IF_ICMPLE    0xa4
 #define OPCODE_GOTO         0xa7
 #define OPCODE_IRETURN      0xac
+#define OPCODE_ARETURN      0xb0
 #define OPCODE_RETURN       0xb1
 #define OPCODE_GETSTATIC    0xb2
 #define OPCODE_PUTSTATIC    0xb3
@@ -274,7 +281,7 @@ j2me_error_t j2me_interpreter_parse_method_parameters(const char* descriptor,
         }
     }
     
-    printf("[解释器] 解析方法参数完成，参数数量: %d\n", arg_count);
+    LOG_DEBUG("[解释器] 解析方法参数完成，参数数量: %d\n", arg_count);
     return J2ME_SUCCESS;
 }
 
@@ -350,7 +357,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
             // 从常量池加载常量
             {
                 uint8_t index = frame->bytecode[frame->pc++];
-                printf("[解释器] ldc: 常量池索引 #%d\n", index);
+                LOG_DEBUG("[解释器] ldc: 常量池索引 #%d\n", index);
                 
                 // 获取当前方法信息以访问常量池
                 j2me_method_t* current_method = (j2me_method_t*)frame->method_info;
@@ -366,41 +373,41 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                         
                         switch (constant_value.type) {
                             case J2ME_CONSTANT_INTEGER:
-                                stack_value = constant_value.int_value;
-                                printf("[解释器] ldc: 加载整数常量 %d\n", stack_value);
+                                stack_value = constant_value.data.int_value;
+                                LOG_DEBUG("[解释器] ldc: 加载整数常量 %d\n", stack_value);
                                 break;
                                 
                             case J2ME_CONSTANT_FLOAT:
                                 // 将float转换为int表示压入栈
-                                stack_value = *(j2me_int*)&constant_value.float_value;
-                                printf("[解释器] ldc: 加载浮点常量 %f\n", constant_value.float_value);
+                                stack_value = *(j2me_int*)&constant_value.data.float_value;
+                                LOG_DEBUG("[解释器] ldc: 加载浮点常量 %f\n", constant_value.data.float_value);
                                 break;
                                 
                             case J2ME_CONSTANT_STRING:
                                 // 字符串对象引用
-                                stack_value = (j2me_int)(intptr_t)constant_value.object_ref;
-                                printf("[解释器] ldc: 加载字符串常量引用 0x%x\n", stack_value);
+                                stack_value = (j2me_int)(intptr_t)constant_value.data.object_ref;
+                                LOG_DEBUG("[解释器] ldc: 加载字符串常量引用 0x%x\n", stack_value);
                                 break;
                                 
                             case J2ME_CONSTANT_CLASS:
                                 // 类对象引用
-                                stack_value = (j2me_int)(intptr_t)constant_value.class_ref;
-                                printf("[解释器] ldc: 加载类常量引用 0x%x\n", stack_value);
+                                stack_value = (j2me_int)(intptr_t)constant_value.data.class_ref;
+                                LOG_DEBUG("[解释器] ldc: 加载类常量引用 0x%x\n", stack_value);
                                 break;
                                 
                             default:
-                                printf("[解释器] ldc: 警告: 不支持的常量类型 %d\n", constant_value.type);
+                                LOG_DEBUG("[解释器] ldc: 警告: 不支持的常量类型 %d\n", constant_value.type);
                                 stack_value = index; // 回退到索引值
                                 break;
                         }
                         
                         result = j2me_operand_stack_push(&frame->operand_stack, stack_value);
                     } else {
-                        printf("[解释器] ldc: 常量解析失败: %d，使用索引值\n", resolve_result);
+                        LOG_DEBUG("[解释器] ldc: 常量解析失败: %d，使用索引值\n", resolve_result);
                         result = j2me_operand_stack_push(&frame->operand_stack, index);
                     }
                 } else {
-                    printf("[解释器] ldc: 无法获取类信息，使用索引值\n");
+                    LOG_DEBUG("[解释器] ldc: 无法获取类信息，使用索引值\n");
                     result = j2me_operand_stack_push(&frame->operand_stack, index);
                 }
             }
@@ -408,6 +415,16 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
             
         case OPCODE_ILOAD:
             // 从局部变量加载int
+            value1 = frame->bytecode[frame->pc++];
+            if (value1 < frame->local_vars.size) {
+                result = j2me_operand_stack_push(&frame->operand_stack, frame->local_vars.variables[value1]);
+            } else {
+                result = J2ME_ERROR_INVALID_PARAMETER;
+            }
+            break;
+            
+        case OPCODE_ALOAD:
+            // 从局部变量加载引用
             value1 = frame->bytecode[frame->pc++];
             if (value1 < frame->local_vars.size) {
                 result = j2me_operand_stack_push(&frame->operand_stack, frame->local_vars.variables[value1]);
@@ -471,15 +488,15 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
             // 存储引用到局部变量
             {
                 uint8_t local_index = frame->bytecode[frame->pc++];
-                printf("[解释器] astore: 存储到局部变量 #%d\n", local_index);
+                LOG_DEBUG("[解释器] astore: 存储到局部变量 #%d\n", local_index);
                 
                 j2me_int ref_value;
                 result = j2me_operand_stack_pop(&frame->operand_stack, &ref_value);
                 if (result == J2ME_SUCCESS && local_index < frame->local_vars.size) {
                     frame->local_vars.variables[local_index] = ref_value;
-                    printf("[解释器] astore: 存储引用 0x%x 到局部变量 #%d\n", ref_value, local_index);
+                    LOG_DEBUG("[解释器] astore: 存储引用 0x%x 到局部变量 #%d\n", ref_value, local_index);
                 } else {
-                    printf("[解释器] astore: 局部变量索引 %d 超出范围 (大小: %zu)\n", 
+                    LOG_DEBUG("[解释器] astore: 局部变量索引 %d 超出范围 (大小: %zu)\n", 
                            local_index, frame->local_vars.size);
                     result = J2ME_ERROR_INVALID_PARAMETER;
                 }
@@ -496,6 +513,13 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
             if (result == J2ME_SUCCESS && value1 < frame->local_vars.size) {
                 frame->local_vars.variables[value1] = value2;
             } else {
+                if (result != J2ME_SUCCESS) {
+                    printf("[ERROR] istore_%d: 栈弹出失败, result=%d, stack_top=%d\n", 
+                           value1, result, frame->operand_stack.top);
+                } else {
+                    printf("[ERROR] istore_%d: 局部变量索引越界, index=%d, size=%d\n", 
+                           value1, value1, frame->local_vars.size);
+                }
                 result = J2ME_ERROR_INVALID_PARAMETER;
             }
             break;
@@ -786,6 +810,66 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
             }
             break;
             
+        case OPCODE_IF_ICMPLT:
+            // 如果value1 < value2则跳转
+            result = j2me_operand_stack_pop(&frame->operand_stack, &value2);
+            if (result == J2ME_SUCCESS) {
+                result = j2me_operand_stack_pop(&frame->operand_stack, &value1);
+                if (result == J2ME_SUCCESS) {
+                    j2me_short offset = (j2me_short)((frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1]);
+                    frame->pc += 2;
+                    if (value1 < value2) {
+                        frame->pc = (frame->pc - 3) + offset; // 跳转到目标位置
+                    }
+                }
+            }
+            break;
+            
+        case OPCODE_IF_ICMPGE:
+            // 如果value1 >= value2则跳转
+            result = j2me_operand_stack_pop(&frame->operand_stack, &value2);
+            if (result == J2ME_SUCCESS) {
+                result = j2me_operand_stack_pop(&frame->operand_stack, &value1);
+                if (result == J2ME_SUCCESS) {
+                    j2me_short offset = (j2me_short)((frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1]);
+                    frame->pc += 2;
+                    if (value1 >= value2) {
+                        frame->pc = (frame->pc - 3) + offset; // 跳转到目标位置
+                    }
+                }
+            }
+            break;
+            
+        case OPCODE_IF_ICMPGT:
+            // 如果value1 > value2则跳转
+            result = j2me_operand_stack_pop(&frame->operand_stack, &value2);
+            if (result == J2ME_SUCCESS) {
+                result = j2me_operand_stack_pop(&frame->operand_stack, &value1);
+                if (result == J2ME_SUCCESS) {
+                    j2me_short offset = (j2me_short)((frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1]);
+                    frame->pc += 2;
+                    if (value1 > value2) {
+                        frame->pc = (frame->pc - 3) + offset; // 跳转到目标位置
+                    }
+                }
+            }
+            break;
+            
+        case OPCODE_IF_ICMPLE:
+            // 如果value1 <= value2则跳转
+            result = j2me_operand_stack_pop(&frame->operand_stack, &value2);
+            if (result == J2ME_SUCCESS) {
+                result = j2me_operand_stack_pop(&frame->operand_stack, &value1);
+                if (result == J2ME_SUCCESS) {
+                    j2me_short offset = (j2me_short)((frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1]);
+                    frame->pc += 2;
+                    if (value1 <= value2) {
+                        frame->pc = (frame->pc - 3) + offset; // 跳转到目标位置
+                    }
+                }
+            }
+            break;
+            
         case 0xc6: // OPCODE_IFNULL
             // 如果引用为null则跳转
             result = j2me_operand_stack_pop(&frame->operand_stack, &value1);
@@ -794,9 +878,9 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 frame->pc += 2;
                 if (value1 == 0) {
                     frame->pc = (frame->pc - 3) + offset; // 跳转到目标位置
-                    printf("[解释器] ifnull: 引用为null，跳转到偏移 %d\n", offset);
+                    LOG_DEBUG("[解释器] ifnull: 引用为null，跳转到偏移 %d\n", offset);
                 } else {
-                    printf("[解释器] ifnull: 引用非null (0x%x)，继续执行\n", value1);
+                    LOG_DEBUG("[解释器] ifnull: 引用非null (0x%x)，继续执行\n", value1);
                 }
             }
             break;
@@ -809,9 +893,9 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 frame->pc += 2;
                 if (value1 != 0) {
                     frame->pc = (frame->pc - 3) + offset; // 跳转到目标位置
-                    printf("[解释器] ifnonnull: 引用非null (0x%x)，跳转到偏移 %d\n", value1, offset);
+                    LOG_DEBUG("[解释器] ifnonnull: 引用非null (0x%x)，跳转到偏移 %d\n", value1, offset);
                 } else {
-                    printf("[解释器] ifnonnull: 引用为null，继续执行\n");
+                    LOG_DEBUG("[解释器] ifnonnull: 引用为null，继续执行\n");
                 }
             }
             break;
@@ -831,12 +915,29 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 // 将返回值存储到栈帧中，供调用者获取
                 frame->return_value = value1;
                 frame->has_return_value = true;
-                printf("[解释器] ireturn: 返回值 %d\n", value1);
+                // 设置PC到一个超出范围的值，停止执行
+                frame->pc = 0xFFFFFFFF;
+                LOG_DEBUG("[解释器] ireturn: 返回值 %d\n", value1);
+            }
+            return J2ME_SUCCESS; // 特殊处理，表示方法结束
+            
+        case OPCODE_ARETURN:
+            // 返回引用值
+            result = j2me_operand_stack_pop(&frame->operand_stack, &value1);
+            if (result == J2ME_SUCCESS) {
+                // 将返回值存储到栈帧中，供调用者获取
+                frame->return_value = value1;
+                frame->has_return_value = true;
+                // 设置PC到一个超出范围的值，停止执行
+                frame->pc = 0xFFFFFFFF;
+                LOG_DEBUG("[解释器] areturn: 返回引用 0x%x\n", value1);
             }
             return J2ME_SUCCESS; // 特殊处理，表示方法结束
             
         case OPCODE_RETURN:
             // 方法返回
+            // 设置PC到一个超出范围的值，停止执行
+            frame->pc = 0xFFFFFFFF;
             return J2ME_SUCCESS; // 特殊处理，表示方法结束
             
         case OPCODE_GETSTATIC:
@@ -845,11 +946,49 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t field_ref_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
-                printf("[解释器] getstatic: 字段引用索引 #%d\n", field_ref_index);
+                LOG_DEBUG("[解释器] getstatic: 字段引用索引 #%d\n", field_ref_index);
                 
                 // 获取当前方法信息以访问常量池
                 j2me_method_t* current_method = (j2me_method_t*)frame->method_info;
                 if (current_method && current_method->owner_class) {
+                    // 解析字段引用，获取目标类
+                    j2me_constant_pool_entry_t* field_ref = 
+                        &current_method->owner_class->constant_pool.entries[field_ref_index - 1];
+                    
+                    if (field_ref->tag == J2ME_CONSTANT_FIELDREF) {
+                        // 获取类索引
+                        uint16_t class_index = field_ref->info.ref_info.class_index;
+                        j2me_constant_pool_entry_t* class_entry = 
+                            &current_method->owner_class->constant_pool.entries[class_index - 1];
+                        
+                        const char* class_name = NULL;
+                        if (class_entry->tag == J2ME_CONSTANT_CLASS) {
+                            j2me_constant_pool_entry_t* name_entry = 
+                                &current_method->owner_class->constant_pool.entries[class_entry->info.class_info.name_index - 1];
+                            if (name_entry->tag == J2ME_CONSTANT_UTF8) {
+                                class_name = name_entry->info.utf8.bytes;
+                            }
+                        }
+                        
+                        // 确保目标类已加载和初始化
+                        if (class_name) {
+                            j2me_class_t* target_class = j2me_class_loader_find_class(vm->class_loader, class_name);
+                            if (!target_class) {
+                                LOG_DEBUG("[解释器] getstatic: 类未加载，尝试加载类 %s\n", class_name);
+                                target_class = j2me_class_loader_load_class(vm->class_loader, class_name);
+                            }
+                            
+                            // 确保类已初始化
+                            if (target_class && target_class->state != CLASS_INITIALIZED) {
+                                LOG_DEBUG("[解释器] getstatic: 类未初始化，执行初始化 %s\n", class_name);
+                                j2me_error_t init_result = j2me_class_initialize(target_class);
+                                if (init_result != J2ME_SUCCESS) {
+                                    LOG_DEBUG("[解释器] getstatic: 类初始化失败: %d\n", init_result);
+                                }
+                            }
+                        }
+                    }
+                    
                     j2me_value_t field_value;
                     j2me_error_t field_result = j2me_get_static_field(vm, 
                                                                       current_method->owner_class, 
@@ -858,15 +997,15 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                     
                     if (field_result == J2ME_SUCCESS) {
                         result = j2me_operand_stack_push(&frame->operand_stack, field_value.int_value);
-                        printf("[解释器] getstatic: 获取静态字段值 0x%x\n", field_value.int_value);
+                        LOG_DEBUG("[解释器] getstatic: 获取静态字段值 0x%x\n", field_value.int_value);
                     } else {
-                        printf("[解释器] getstatic: 字段访问失败: %d，使用默认值\n", field_result);
-                        j2me_int default_value = 0x87654321;
+                        LOG_DEBUG("[解释器] getstatic: 字段访问失败: %d，使用null\n", field_result);
+                        j2me_int default_value = 0; // 返回null而不是假引用
                         result = j2me_operand_stack_push(&frame->operand_stack, default_value);
                     }
                 } else {
-                    printf("[解释器] getstatic: 无法获取类信息，使用默认值\n");
-                    j2me_int default_value = 0x87654321;
+                    LOG_DEBUG("[解释器] getstatic: 无法获取类信息，使用null\n");
+                    j2me_int default_value = 0; // 返回null而不是假引用
                     result = j2me_operand_stack_push(&frame->operand_stack, default_value);
                 }
             }
@@ -878,7 +1017,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t field_ref_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
-                printf("[解释器] putstatic: 字段引用索引 #%d\n", field_ref_index);
+                LOG_DEBUG("[解释器] putstatic: 字段引用索引 #%d\n", field_ref_index);
                 
                 // 弹出要设置的值
                 j2me_int field_value;
@@ -888,6 +1027,44 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                     // 获取当前方法信息以访问常量池
                     j2me_method_t* current_method = (j2me_method_t*)frame->method_info;
                     if (current_method && current_method->owner_class) {
+                        // 解析字段引用，获取目标类
+                        j2me_constant_pool_entry_t* field_ref = 
+                            &current_method->owner_class->constant_pool.entries[field_ref_index - 1];
+                        
+                        if (field_ref->tag == J2ME_CONSTANT_FIELDREF) {
+                            // 获取类索引
+                            uint16_t class_index = field_ref->info.ref_info.class_index;
+                            j2me_constant_pool_entry_t* class_entry = 
+                                &current_method->owner_class->constant_pool.entries[class_index - 1];
+                            
+                            const char* class_name = NULL;
+                            if (class_entry->tag == J2ME_CONSTANT_CLASS) {
+                                j2me_constant_pool_entry_t* name_entry = 
+                                    &current_method->owner_class->constant_pool.entries[class_entry->info.class_info.name_index - 1];
+                                if (name_entry->tag == J2ME_CONSTANT_UTF8) {
+                                    class_name = name_entry->info.utf8.bytes;
+                                }
+                            }
+                            
+                            // 确保目标类已加载和初始化
+                            if (class_name) {
+                                j2me_class_t* target_class = j2me_class_loader_find_class(vm->class_loader, class_name);
+                                if (!target_class) {
+                                    LOG_DEBUG("[解释器] putstatic: 类未加载，尝试加载类 %s\n", class_name);
+                                    target_class = j2me_class_loader_load_class(vm->class_loader, class_name);
+                                }
+                                
+                                // 确保类已初始化
+                                if (target_class && target_class->state != CLASS_INITIALIZED) {
+                                    LOG_DEBUG("[解释器] putstatic: 类未初始化，执行初始化 %s\n", class_name);
+                                    j2me_error_t init_result = j2me_class_initialize(target_class);
+                                    if (init_result != J2ME_SUCCESS) {
+                                        LOG_DEBUG("[解释器] putstatic: 类初始化失败: %d\n", init_result);
+                                    }
+                                }
+                            }
+                        }
+                        
                         j2me_value_t value;
                         value.type = J2ME_TYPE_INT;
                         value.int_value = field_value;
@@ -898,12 +1075,12 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                                                                           &value);
                         
                         if (field_result == J2ME_SUCCESS) {
-                            printf("[解释器] putstatic: 设置静态字段值 0x%x\n", field_value);
+                            LOG_DEBUG("[解释器] putstatic: 设置静态字段值 0x%x\n", field_value);
                         } else {
-                            printf("[解释器] putstatic: 字段设置失败: %d\n", field_result);
+                            LOG_DEBUG("[解释器] putstatic: 字段设置失败: %d\n", field_result);
                         }
                     } else {
-                        printf("[解释器] putstatic: 无法获取类信息，忽略设置操作\n");
+                        LOG_DEBUG("[解释器] putstatic: 无法获取类信息，忽略设置操作\n");
                     }
                 }
             }
@@ -915,7 +1092,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t field_ref_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
-                printf("[解释器] getfield: 字段引用索引 #%d\n", field_ref_index);
+                LOG_DEBUG("[解释器] getfield: 字段引用索引 #%d\n", field_ref_index);
                 
                 // 弹出对象引用
                 j2me_int object_ref;
@@ -928,23 +1105,10 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                         j2me_value_t field_value;
                         j2me_object_t* object = (j2me_object_t*)(intptr_t)object_ref;
                         
-                        // 如果对象引用为null，返回智能默认值
+                        // 如果对象引用为null，返回0
                         if (object_ref == 0) {
-                            printf("[解释器] getfield: 对象引用为null，返回智能默认值 (字段引用: #%d)\n", field_ref_index);
-                            j2me_int default_value;
-                            
-                            // 根据字段引用索引返回不同的默认值
-                            if (field_ref_index == 22) {
-                                default_value = 0; // 返回null，让游戏进入初始化
-                            } else if (field_ref_index == 23) {
-                                default_value = 0x12345678; // 字符串字段返回非null
-                            } else if (field_ref_index == 20) {
-                                default_value = 1; // 状态字段返回活动状态
-                            } else {
-                                default_value = 0x11223344; // 其他字段返回非null值
-                            }
-                            
-                            result = j2me_operand_stack_push(&frame->operand_stack, default_value);
+                            LOG_DEBUG("[解释器] getfield: 对象引用为null，返回0\n");
+                            result = j2me_operand_stack_push(&frame->operand_stack, 0);
                         } else {
                             j2me_error_t field_result = j2me_get_instance_field(vm, 
                                                                                 object,
@@ -954,29 +1118,15 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                             
                             if (field_result == J2ME_SUCCESS) {
                                 result = j2me_operand_stack_push(&frame->operand_stack, field_value.int_value);
-                                printf("[解释器] getfield: 从对象 0x%x 获取字段值 0x%x\n", object_ref, field_value.int_value);
+                                LOG_DEBUG("[解释器] getfield: 从对象 0x%x 获取字段值 0x%x\n", object_ref, field_value.int_value);
                             } else {
-                                printf("[解释器] getfield: 字段访问失败: %d，使用智能默认值\n", field_result);
-                                j2me_int default_value;
-                                
-                                // 根据字段引用索引返回不同的默认值
-                                if (field_ref_index == 22) {
-                                    default_value = 0; // 返回null，让游戏进入初始化
-                                } else if (field_ref_index == 23) {
-                                    default_value = 0x12345678; // 字符串字段返回非null
-                                } else if (field_ref_index == 20) {
-                                    default_value = 1; // 状态字段返回活动状态
-                                } else {
-                                    default_value = 0x11223344; // 其他字段返回非null值
-                                }
-                                
-                                result = j2me_operand_stack_push(&frame->operand_stack, default_value);
+                                LOG_DEBUG("[解释器] getfield: 字段访问失败: %d，返回0\n", field_result);
+                                result = j2me_operand_stack_push(&frame->operand_stack, 0);
                             }
                         }
                     } else {
-                        printf("[解释器] getfield: 无法获取类信息，使用默认值\n");
-                        j2me_int default_value = 0x11223344;
-                        result = j2me_operand_stack_push(&frame->operand_stack, default_value);
+                        LOG_DEBUG("[解释器] getfield: 无法获取类信息，返回0\n");
+                        result = j2me_operand_stack_push(&frame->operand_stack, 0);
                     }
                 }
             }
@@ -988,7 +1138,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t field_ref_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
-                printf("[解释器] putfield: 字段引用索引 #%d\n", field_ref_index);
+                LOG_DEBUG("[解释器] putfield: 字段引用索引 #%d\n", field_ref_index);
                 
                 // 弹出字段值和对象引用
                 j2me_int field_value, object_ref;
@@ -1008,7 +1158,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                             
                             // 如果对象引用为null（构造过程中），直接忽略字段设置
                             if (object_ref == 0) {
-                                printf("[解释器] putfield: 对象引用为null，忽略字段设置 (字段引用: #%d)\n", field_ref_index);
+                                LOG_DEBUG("[解释器] putfield: 对象引用为null，忽略字段设置 (字段引用: #%d)\n", field_ref_index);
                             } else {
                                 j2me_error_t field_result = j2me_set_instance_field(vm, 
                                                                                     object,
@@ -1017,13 +1167,13 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                                                                                     &value);
                                 
                                 if (field_result == J2ME_SUCCESS) {
-                                    printf("[解释器] putfield: 设置对象 0x%x 的字段值 0x%x\n", object_ref, field_value);
+                                    LOG_DEBUG("[解释器] putfield: 设置对象 0x%x 的字段值 0x%x\n", object_ref, field_value);
                                 } else {
-                                    printf("[解释器] putfield: 字段设置失败: %d，忽略继续执行\n", field_result);
+                                    LOG_DEBUG("[解释器] putfield: 字段设置失败: %d，忽略继续执行\n", field_result);
                                 }
                             }
                         } else {
-                            printf("[解释器] putfield: 无法获取类信息，忽略设置操作\n");
+                            LOG_DEBUG("[解释器] putfield: 无法获取类信息，忽略设置操作\n");
                         }
                     }
                 }
@@ -1037,15 +1187,25 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t method_ref_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
+                // 清除之前的返回值标志
+                vm->last_method_has_return_value = false;
+                
                 // 使用新的方法调用系统
                 result = j2me_method_invocation_invoke_special(vm, frame, method_ref_index);
                 if (result != J2ME_SUCCESS) {
-                    printf("[解释器] invokespecial: 方法调用失败: %d\n", result);
+                    LOG_DEBUG("[解释器] invokespecial: 方法调用失败: %d\n", result);
                     
                     // 检查是否有异常
                     if (j2me_has_pending_exception(vm)) {
                         j2me_exception_t* exception = j2me_get_current_exception(vm);
                         j2me_handle_exception(vm, exception);
+                    }
+                } else {
+                    // 如果方法有返回值，将其压入栈
+                    if (vm->last_method_has_return_value) {
+                        result = j2me_operand_stack_push(&frame->operand_stack, vm->last_method_return_value);
+                        LOG_DEBUG("[解释器] invokespecial: 压入返回值 0x%x\n", vm->last_method_return_value);
+                        vm->last_method_has_return_value = false;
                     }
                 }
             }
@@ -1057,15 +1217,25 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t method_ref_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
+                // 清除之前的返回值标志
+                vm->last_method_has_return_value = false;
+                
                 // 使用新的方法调用系统
                 result = j2me_method_invocation_invoke_virtual(vm, frame, method_ref_index);
                 if (result != J2ME_SUCCESS) {
-                    printf("[解释器] invokevirtual: 方法调用失败: %d\n", result);
+                    LOG_DEBUG("[解释器] invokevirtual: 方法调用失败: %d\n", result);
                     
                     // 检查是否有异常
                     if (j2me_has_pending_exception(vm)) {
                         j2me_exception_t* exception = j2me_get_current_exception(vm);
                         j2me_handle_exception(vm, exception);
+                    }
+                } else {
+                    // 如果方法有返回值，将其压入栈
+                    if (vm->last_method_has_return_value) {
+                        result = j2me_operand_stack_push(&frame->operand_stack, vm->last_method_return_value);
+                        LOG_DEBUG("[解释器] invokevirtual: 压入返回值 0x%x\n", vm->last_method_return_value);
+                        vm->last_method_has_return_value = false;
                     }
                 }
             }
@@ -1077,15 +1247,25 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t method_ref_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
+                // 清除之前的返回值标志
+                vm->last_method_has_return_value = false;
+                
                 // 使用新的方法调用系统
                 result = j2me_method_invocation_invoke_static(vm, frame, method_ref_index);
                 if (result != J2ME_SUCCESS) {
-                    printf("[解释器] invokestatic: 方法调用失败: %d\n", result);
+                    LOG_DEBUG("[解释器] invokestatic: 方法调用失败: %d\n", result);
                     
                     // 检查是否有异常
                     if (j2me_has_pending_exception(vm)) {
                         j2me_exception_t* exception = j2me_get_current_exception(vm);
                         j2me_handle_exception(vm, exception);
+                    }
+                } else {
+                    // 如果方法有返回值，将其压入栈
+                    if (vm->last_method_has_return_value) {
+                        result = j2me_operand_stack_push(&frame->operand_stack, vm->last_method_return_value);
+                        LOG_DEBUG("[解释器] invokestatic: 压入返回值 0x%x\n", vm->last_method_return_value);
+                        vm->last_method_has_return_value = false;
                     }
                 }
             }
@@ -1102,7 +1282,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 // 使用新的方法调用系统
                 result = j2me_method_invocation_invoke_interface(vm, frame, method_ref_index, count);
                 if (result != J2ME_SUCCESS) {
-                    printf("[解释器] invokeinterface: 方法调用失败: %d\n", result);
+                    LOG_DEBUG("[解释器] invokeinterface: 方法调用失败: %d\n", result);
                     
                     // 检查是否有异常
                     if (j2me_has_pending_exception(vm)) {
@@ -1119,13 +1299,105 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t class_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
-                printf("[解释器] new: 类索引 #%d\n", class_index);
+                printf("[解释器] NEW: 类索引 #%d\n", class_index);
                 
-                // 暂时简化处理：创建一个假的对象引用
-                j2me_int object_ref = 0x12345678; // 假的对象引用
+                // 获取当前方法信息以访问常量池
+                j2me_method_t* current_method = (j2me_method_t*)frame->method_info;
+                j2me_int object_ref = 0;
+                
+                if (current_method && current_method->owner_class && vm && vm->heap) {
+                    // 解析类引用
+                    j2me_constant_pool_entry_t* class_entry = 
+                        &current_method->owner_class->constant_pool.entries[class_index - 1];
+                    
+                    if (class_entry->tag == J2ME_CONSTANT_CLASS) {
+                        j2me_constant_pool_entry_t* name_entry = 
+                            &current_method->owner_class->constant_pool.entries[class_entry->info.class_info.name_index - 1];
+                        
+                        if (name_entry->tag == J2ME_CONSTANT_UTF8) {
+                            const char* class_name = name_entry->info.utf8.bytes;
+                            printf("[解释器] NEW: 创建类 %s 的实例\n", class_name);
+                            
+                            // 查找类，如果未找到则尝试加载
+                            j2me_class_t* target_class = j2me_class_loader_find_class(vm->class_loader, class_name);
+                            if (!target_class) {
+                                printf("[解释器] NEW: 类未加载，尝试加载类 %s\n", class_name);
+                                target_class = j2me_class_loader_load_class(vm->class_loader, class_name);
+                            }
+                            
+                            if (target_class) {
+                                // 确保类已初始化
+                                if (target_class->state != CLASS_INITIALIZED) {
+                                    printf("[解释器] NEW: 类未初始化，执行初始化 %s\n", class_name);
+                                    j2me_error_t init_result = j2me_class_initialize(target_class);
+                                    if (init_result != J2ME_SUCCESS) {
+                                        printf("[解释器] NEW: 类初始化失败: %d\n", init_result);
+                                    }
+                                }
+                                
+                                // 使用类指针地址作为class_id
+                                uint32_t class_id = (uint32_t)(uintptr_t)target_class;
+                                
+                                // 计算对象大小（简化：使用固定大小）
+                                size_t object_size = target_class->instance_size > 0 ? target_class->instance_size : 64;
+                                
+                                // 在堆上创建对象
+                                object_ref = j2me_heap_alloc(vm->heap, class_id, object_size);
+                                if (object_ref != J2ME_NULL_REF) {
+                                    printf("[解释器] NEW: 成功创建对象 0x%x (类: %s, 大小: %zu)\n", 
+                                             object_ref, class_name, object_size);
+                                    
+                                    // 获取对象并设置类指针
+                                    j2me_heap_object_header_t* obj = j2me_heap_get_object(vm->heap, object_ref);
+                                    if (obj) {
+                                        // 将类指针存储在对象数据的开头（兼容旧的对象系统）
+                                        if (object_size >= sizeof(void*)) {
+                                            *((j2me_class_t**)obj->data) = target_class;
+                                        }
+                                    }
+                                    
+                                    // 如果是Canvas类或其子类，保存到VM
+                                    // 使用类继承信息准确判断
+                                    if (j2me_class_is_subclass_of(target_class, "javax/microedition/lcdui/Canvas") ||
+                                        j2me_class_is_subclass_of(target_class, "javax/microedition/lcdui/game/GameCanvas")) {
+                                        vm->last_canvas_object_ref = object_ref;
+                                        printf("[解释器] NEW: 保存Canvas子类对象引用到VM: 0x%x (类: %s, 父类: %s)\n", 
+                                               object_ref, class_name, target_class->super_name ? target_class->super_name : "none");
+                                    }
+                                } else {
+                                    printf("[解释器] NEW: 堆分配失败，使用假引用\n");
+                                    object_ref = 0x12345678; // 回退到假引用
+                                }
+                            } else {
+                                printf("[解释器] NEW: 无法加载类 %s，创建通用对象\n", class_name);
+                                // 对于无法加载的类（如系统类），创建一个通用对象
+                                uint32_t class_id = 0xFFFFFFFF; // 特殊class_id表示未知类
+                                size_t object_size = 64; // 默认大小
+                                
+                                object_ref = j2me_heap_alloc(vm->heap, class_id, object_size);
+                                if (object_ref != J2ME_NULL_REF) {
+                                    printf("[解释器] NEW: 创建通用对象成功 0x%x (类: %s)\n", object_ref, class_name);
+                                } else {
+                                    printf("[解释器] NEW: 堆分配失败，使用假引用\n");
+                                    object_ref = 0x12345678; // 回退到假引用
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    printf("[解释器] NEW: VM或堆未初始化，使用假引用\n");
+                    object_ref = 0x12345678; // 回退到假引用
+                }
+                
                 result = j2me_operand_stack_push(&frame->operand_stack, object_ref);
                 
-                printf("[解释器] new: 创建对象引用 0x%x\n", object_ref);
+                // 保存最后创建的对象引用到VM（用于后续的putfield等操作）
+                if (vm) {
+                    vm->last_method_return_value = object_ref;
+                    vm->last_method_has_return_value = true;
+                }
+                
+                printf("[解释器] NEW: 对象引用已压栈 0x%x\n", object_ref);
             }
             break;
             
@@ -1134,7 +1406,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
             {
                 uint16_t index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
-                printf("[解释器] ldc_w: 常量池索引 #%d\n", index);
+                LOG_DEBUG("[解释器] ldc_w: 常量池索引 #%d\n", index);
                 
                 // 获取当前方法信息以访问常量池
                 j2me_method_t* current_method = (j2me_method_t*)frame->method_info;
@@ -1150,41 +1422,41 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                         
                         switch (constant_value.type) {
                             case J2ME_CONSTANT_INTEGER:
-                                stack_value = constant_value.int_value;
-                                printf("[解释器] ldc_w: 加载整数常量 %d\n", stack_value);
+                                stack_value = constant_value.data.int_value;
+                                LOG_DEBUG("[解释器] ldc_w: 加载整数常量 %d\n", stack_value);
                                 break;
                                 
                             case J2ME_CONSTANT_FLOAT:
                                 // 将float转换为int表示压入栈
-                                stack_value = *(j2me_int*)&constant_value.float_value;
-                                printf("[解释器] ldc_w: 加载浮点常量 %f\n", constant_value.float_value);
+                                stack_value = *(j2me_int*)&constant_value.data.float_value;
+                                LOG_DEBUG("[解释器] ldc_w: 加载浮点常量 %f\n", constant_value.data.float_value);
                                 break;
                                 
                             case J2ME_CONSTANT_STRING:
                                 // 字符串对象引用
-                                stack_value = (j2me_int)(intptr_t)constant_value.object_ref;
-                                printf("[解释器] ldc_w: 加载字符串常量引用 0x%x\n", stack_value);
+                                stack_value = (j2me_int)(intptr_t)constant_value.data.object_ref;
+                                LOG_DEBUG("[解释器] ldc_w: 加载字符串常量引用 0x%x\n", stack_value);
                                 break;
                                 
                             case J2ME_CONSTANT_CLASS:
                                 // 类对象引用
-                                stack_value = (j2me_int)(intptr_t)constant_value.class_ref;
-                                printf("[解释器] ldc_w: 加载类常量引用 0x%x\n", stack_value);
+                                stack_value = (j2me_int)(intptr_t)constant_value.data.class_ref;
+                                LOG_DEBUG("[解释器] ldc_w: 加载类常量引用 0x%x\n", stack_value);
                                 break;
                                 
                             default:
-                                printf("[解释器] ldc_w: 警告: 不支持的常量类型 %d\n", constant_value.type);
+                                LOG_DEBUG("[解释器] ldc_w: 警告: 不支持的常量类型 %d\n", constant_value.type);
                                 stack_value = index; // 回退到索引值
                                 break;
                         }
                         
                         result = j2me_operand_stack_push(&frame->operand_stack, stack_value);
                     } else {
-                        printf("[解释器] ldc_w: 常量解析失败: %d，使用索引值\n", resolve_result);
+                        LOG_DEBUG("[解释器] ldc_w: 常量解析失败: %d，使用索引值\n", resolve_result);
                         result = j2me_operand_stack_push(&frame->operand_stack, index);
                     }
                 } else {
-                    printf("[解释器] ldc_w: 无法获取类信息，使用索引值\n");
+                    LOG_DEBUG("[解释器] ldc_w: 无法获取类信息，使用索引值\n");
                     result = j2me_operand_stack_push(&frame->operand_stack, index);
                 }
             }
@@ -1196,13 +1468,13 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint8_t index = frame->bytecode[frame->pc++];
                 int8_t increment = (int8_t)frame->bytecode[frame->pc++];
                 
-                printf("[解释器] iinc: 局部变量 %d 增加 %d\n", index, increment);
+                LOG_DEBUG("[解释器] iinc: 局部变量 %d 增加 %d\n", index, increment);
                 
                 if (index < frame->local_vars.size) {
                     frame->local_vars.variables[index] += increment;
-                    printf("[解释器] iinc: 局部变量 %d 新值: %d\n", index, frame->local_vars.variables[index]);
+                    LOG_DEBUG("[解释器] iinc: 局部变量 %d 新值: %d\n", index, frame->local_vars.variables[index]);
                 } else {
-                    printf("[解释器] iinc: 错误: 无效的局部变量索引 %d\n", index);
+                    LOG_DEBUG("[解释器] iinc: 错误: 无效的局部变量索引 %d\n", index);
                     result = J2ME_ERROR_INVALID_PARAMETER;
                 }
             }
@@ -1214,7 +1486,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 j2me_short offset = (j2me_short)((frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1]);
                 frame->pc += 2;
                 
-                printf("[解释器] jsr: 跳转到子程序，偏移 %d\n", offset);
+                LOG_DEBUG("[解释器] jsr: 跳转到子程序，偏移 %d\n", offset);
                 
                 // 将返回地址压入栈
                 result = j2me_operand_stack_push(&frame->operand_stack, frame->pc);
@@ -1229,13 +1501,13 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
             {
                 uint8_t index = frame->bytecode[frame->pc++];
                 
-                printf("[解释器] ret: 从子程序返回，局部变量索引 %d\n", index);
+                LOG_DEBUG("[解释器] ret: 从子程序返回，局部变量索引 %d\n", index);
                 
                 if (index < frame->local_vars.size) {
                     frame->pc = frame->local_vars.variables[index];
-                    printf("[解释器] ret: 返回到地址 %d\n", frame->pc);
+                    LOG_DEBUG("[解释器] ret: 返回到地址 %d\n", frame->pc);
                 } else {
-                    printf("[解释器] ret: 错误: 无效的局部变量索引 %d\n", index);
+                    LOG_DEBUG("[解释器] ret: 错误: 无效的局部变量索引 %d\n", index);
                     result = J2ME_ERROR_INVALID_PARAMETER;
                 }
             }
@@ -1268,7 +1540,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                               frame->bytecode[frame->pc + 3];
                 frame->pc += 4;
                 
-                printf("[解释器] tableswitch: 范围 %d-%d, 默认偏移 %d\n", low, high, default_offset);
+                LOG_DEBUG("[解释器] tableswitch: 范围 %d-%d, 默认偏移 %d\n", low, high, default_offset);
                 
                 // 弹出索引值
                 j2me_int index;
@@ -1284,10 +1556,10 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                                              frame->bytecode[offset_pos + 3];
                         
                         frame->pc = (frame->pc - (padding + 13)) + jump_offset;
-                        printf("[解释器] tableswitch: 跳转到索引 %d, 偏移 %d\n", index, jump_offset);
+                        LOG_DEBUG("[解释器] tableswitch: 跳转到索引 %d, 偏移 %d\n", index, jump_offset);
                     } else {
                         frame->pc = (frame->pc - (padding + 13)) + default_offset;
-                        printf("[解释器] tableswitch: 使用默认跳转，偏移 %d\n", default_offset);
+                        LOG_DEBUG("[解释器] tableswitch: 使用默认跳转，偏移 %d\n", default_offset);
                     }
                     
                     // 跳过跳转表
@@ -1302,7 +1574,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t class_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
-                printf("[解释器] checkcast: 类索引 #%d\n", class_index);
+                LOG_DEBUG("[解释器] checkcast: 类索引 #%d\n", class_index);
                 
                 // 弹出对象引用
                 j2me_int object_ref;
@@ -1311,11 +1583,11 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 if (result == J2ME_SUCCESS) {
                     // 简化实现：如果对象引用为null，直接通过
                     if (object_ref == 0) {
-                        printf("[解释器] checkcast: null引用，检查通过\n");
+                        LOG_DEBUG("[解释器] checkcast: null引用，检查通过\n");
                         result = j2me_operand_stack_push(&frame->operand_stack, object_ref);
                     } else {
                         // 简化实现：假设所有非null对象都通过类型检查
-                        printf("[解释器] checkcast: 对象 0x%x 类型检查通过 (简化实现)\n", object_ref);
+                        LOG_DEBUG("[解释器] checkcast: 对象 0x%x 类型检查通过 (简化实现)\n", object_ref);
                         result = j2me_operand_stack_push(&frame->operand_stack, object_ref);
                     }
                 }
@@ -1328,7 +1600,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t class_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
-                printf("[解释器] instanceof: 类索引 #%d\n", class_index);
+                LOG_DEBUG("[解释器] instanceof: 类索引 #%d\n", class_index);
                 
                 // 弹出对象引用
                 j2me_int object_ref;
@@ -1337,7 +1609,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 if (result == J2ME_SUCCESS) {
                     // 简化实现：如果对象引用为null，返回false；否则返回true
                     j2me_int is_instance = (object_ref != 0) ? 1 : 0;
-                    printf("[解释器] instanceof: 对象 0x%x 实例检查结果 %d\n", object_ref, is_instance);
+                    LOG_DEBUG("[解释器] instanceof: 对象 0x%x 实例检查结果 %d\n", object_ref, is_instance);
                     result = j2me_operand_stack_push(&frame->operand_stack, is_instance);
                 }
             }
@@ -1347,7 +1619,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
             // 创建基本类型数组
             {
                 uint8_t array_type = frame->bytecode[frame->pc++];
-                printf("[解释器] newarray: 数组类型 %d\n", array_type);
+                LOG_DEBUG("[解释器] newarray: 数组类型 %d\n", array_type);
                 
                 // 弹出数组长度
                 j2me_int array_length;
@@ -1355,10 +1627,10 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 
                 if (result == J2ME_SUCCESS) {
                     if (array_length < 0) {
-                        printf("[解释器] newarray: 数组长度为负数 %d\n", array_length);
+                        LOG_DEBUG("[解释器] newarray: 数组长度为负数 %d\n", array_length);
                         result = J2ME_ERROR_RUNTIME_EXCEPTION;
                     } else if (array_length > 10000) {
-                        printf("[解释器] newarray: 数组长度过大 %d，限制为1000\n", array_length);
+                        LOG_DEBUG("[解释器] newarray: 数组长度过大 %d，限制为1000\n", array_length);
                         array_length = 1000;
                     }
                     
@@ -1377,7 +1649,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                         const char* type_name = (array_type >= 4 && array_type <= 11) ? 
                                                 type_names[array_type] : "unknown";
                         
-                        printf("[解释器] newarray: 创建 %s[%d] 数组，引用 0x%x\n", 
+                        LOG_DEBUG("[解释器] newarray: 创建 %s[%d] 数组，引用 0x%x\n", 
                                type_name, array_length, array_ref);
                     }
                 }
@@ -1390,7 +1662,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 uint16_t class_index = (frame->bytecode[frame->pc] << 8) | frame->bytecode[frame->pc + 1];
                 frame->pc += 2;
                 
-                printf("[解释器] anewarray: 类索引 #%d\n", class_index);
+                LOG_DEBUG("[解释器] anewarray: 类索引 #%d\n", class_index);
                 
                 // 弹出数组长度
                 j2me_int array_length;
@@ -1398,10 +1670,10 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                 
                 if (result == J2ME_SUCCESS) {
                     if (array_length < 0) {
-                        printf("[解释器] anewarray: 数组长度为负数 %d\n", array_length);
+                        LOG_DEBUG("[解释器] anewarray: 数组长度为负数 %d\n", array_length);
                         result = J2ME_ERROR_RUNTIME_EXCEPTION;
                     } else if (array_length > 10000) {
-                        printf("[解释器] anewarray: 数组长度过大 %d，限制为1000\n", array_length);
+                        LOG_DEBUG("[解释器] anewarray: 数组长度过大 %d，限制为1000\n", array_length);
                         array_length = 1000;
                     }
                     
@@ -1412,15 +1684,72 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                         
                         result = j2me_operand_stack_push(&frame->operand_stack, array_ref);
                         
-                        printf("[解释器] anewarray: 创建引用数组[%d]，引用 0x%x\n", 
+                        LOG_DEBUG("[解释器] anewarray: 创建引用数组[%d]，引用 0x%x\n", 
                                array_length, array_ref);
                     }
                 }
             }
             break;
             
+        case 0xab: // OPCODE_LOOKUPSWITCH
+            // 查找跳转指令
+            {
+                // 弹出key值
+                j2me_int key;
+                result = j2me_operand_stack_pop(&frame->operand_stack, &key);
+                
+                if (result == J2ME_SUCCESS) {
+                    // lookupswitch指令需要4字节对齐
+                    uint32_t base_pc = frame->pc - 1; // lookupswitch指令的起始位置
+                    uint32_t aligned_pc = ((base_pc + 4) & ~3); // 对齐到4字节边界
+                    
+                    // 读取default偏移量（4字节，大端序）
+                    int32_t default_offset = (frame->bytecode[aligned_pc] << 24) |
+                                            (frame->bytecode[aligned_pc + 1] << 16) |
+                                            (frame->bytecode[aligned_pc + 2] << 8) |
+                                            frame->bytecode[aligned_pc + 3];
+                    
+                    // 读取npairs（匹配对数量）
+                    int32_t npairs = (frame->bytecode[aligned_pc + 4] << 24) |
+                                    (frame->bytecode[aligned_pc + 5] << 16) |
+                                    (frame->bytecode[aligned_pc + 6] << 8) |
+                                    frame->bytecode[aligned_pc + 7];
+                    
+                    // 查找匹配的key
+                    bool found = false;
+                    int32_t target_offset = default_offset;
+                    
+                    for (int32_t i = 0; i < npairs; i++) {
+                        uint32_t pair_offset = aligned_pc + 8 + (i * 8);
+                        
+                        // 读取match值
+                        int32_t match = (frame->bytecode[pair_offset] << 24) |
+                                       (frame->bytecode[pair_offset + 1] << 16) |
+                                       (frame->bytecode[pair_offset + 2] << 8) |
+                                       frame->bytecode[pair_offset + 3];
+                        
+                        if (match == key) {
+                            // 读取offset
+                            target_offset = (frame->bytecode[pair_offset + 4] << 24) |
+                                          (frame->bytecode[pair_offset + 5] << 16) |
+                                          (frame->bytecode[pair_offset + 6] << 8) |
+                                          frame->bytecode[pair_offset + 7];
+                            found = true;
+                            break;
+                        }
+                    }
+                    
+                    // 跳转到目标位置
+                    frame->pc = base_pc + target_offset;
+                    
+                    // LOG_DEBUG("[解释器] lookupswitch: key=%d, %s, 跳转到偏移 %d\n", 
+                    //        key, found ? "找到匹配" : "使用default", target_offset);
+                }
+            }
+            break;
+            
         default:
-            printf("[解释器] 未实现的指令: %s (0x%02x)\n", inst_name, opcode);
+            LOG_DEBUG("[解释器] 未实现的指令: %s (0x%02x)\n", inst_name, opcode);
             result = J2ME_ERROR_RUNTIME_EXCEPTION;
             break;
     }
@@ -1468,7 +1797,7 @@ j2me_error_t j2me_interpreter_resolve_method_ref(j2me_class_t* class_info,
     
     // 检查方法引用索引是否有效
     if (method_ref_index == 0 || method_ref_index >= class_info->constant_pool.count) {
-        printf("[方法解析] 错误: 无效的方法引用索引 #%d (常量池大小: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 无效的方法引用索引 #%d (常量池大小: %d)\n", 
                method_ref_index, class_info->constant_pool.count);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
@@ -1478,7 +1807,7 @@ j2me_error_t j2me_interpreter_resolve_method_ref(j2me_class_t* class_info,
     
     // 检查是否为方法引用或接口方法引用
     if (method_ref->tag != J2ME_CONSTANT_METHODREF && method_ref->tag != J2ME_CONSTANT_INTERFACE_METHODREF) {
-        printf("[方法解析] 错误: 常量池条目 #%d 不是方法引用 (类型: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 常量池条目 #%d 不是方法引用 (类型: %d)\n", 
                method_ref_index, method_ref->tag);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
@@ -1486,33 +1815,33 @@ j2me_error_t j2me_interpreter_resolve_method_ref(j2me_class_t* class_info,
     uint16_t class_index = method_ref->info.ref_info.class_index;
     uint16_t name_and_type_index = method_ref->info.ref_info.name_and_type_index;
     
-    printf("[方法解析] 方法引用 #%d: class_index=%d, name_and_type_index=%d\n", 
+    LOG_DEBUG("[方法解析] 方法引用 #%d: class_index=%d, name_and_type_index=%d\n", 
            method_ref_index, class_index, name_and_type_index);
     
     // 解析类名
     if (class_index == 0 || class_index >= class_info->constant_pool.count) {
-        printf("[方法解析] 错误: 无效的类索引 #%d (常量池大小: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 无效的类索引 #%d (常量池大小: %d)\n", 
                class_index, class_info->constant_pool.count);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
     j2me_constant_pool_entry_t* class_entry = &class_info->constant_pool.entries[class_index - 1];
     if (class_entry->tag != J2ME_CONSTANT_CLASS) {
-        printf("[方法解析] 错误: 常量池条目 #%d 不是类引用 (类型: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 常量池条目 #%d 不是类引用 (类型: %d)\n", 
                class_index, class_entry->tag);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
     uint16_t class_name_index = class_entry->info.class_info.name_index;
     if (class_name_index == 0 || class_name_index >= class_info->constant_pool.count) {
-        printf("[方法解析] 错误: 无效的类名索引 #%d (常量池大小: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 无效的类名索引 #%d (常量池大小: %d)\n", 
                class_name_index, class_info->constant_pool.count);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
     j2me_constant_pool_entry_t* class_name_entry = &class_info->constant_pool.entries[class_name_index - 1];
     if (class_name_entry->tag != J2ME_CONSTANT_UTF8) {
-        printf("[方法解析] 错误: 类名条目 #%d 不是UTF-8字符串 (类型: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 类名条目 #%d 不是UTF-8字符串 (类型: %d)\n", 
                class_name_index, class_name_entry->tag);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
@@ -1521,14 +1850,14 @@ j2me_error_t j2me_interpreter_resolve_method_ref(j2me_class_t* class_info,
     
     // 解析方法名和描述符
     if (name_and_type_index == 0 || name_and_type_index >= class_info->constant_pool.count) {
-        printf("[方法解析] 错误: 无效的名称和类型索引 #%d (常量池大小: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 无效的名称和类型索引 #%d (常量池大小: %d)\n", 
                name_and_type_index, class_info->constant_pool.count);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
     j2me_constant_pool_entry_t* name_and_type_entry = &class_info->constant_pool.entries[name_and_type_index - 1];
     if (name_and_type_entry->tag != J2ME_CONSTANT_NAME_AND_TYPE) {
-        printf("[方法解析] 错误: 常量池条目 #%d 不是名称和类型 (类型: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 常量池条目 #%d 不是名称和类型 (类型: %d)\n", 
                name_and_type_index, name_and_type_entry->tag);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
@@ -1536,19 +1865,19 @@ j2me_error_t j2me_interpreter_resolve_method_ref(j2me_class_t* class_info,
     uint16_t method_name_index = name_and_type_entry->info.name_and_type_info.name_index;
     uint16_t descriptor_index = name_and_type_entry->info.name_and_type_info.descriptor_index;
     
-    printf("[方法解析] 名称和类型 #%d: method_name_index=%d, descriptor_index=%d\n", 
+    LOG_DEBUG("[方法解析] 名称和类型 #%d: method_name_index=%d, descriptor_index=%d\n", 
            name_and_type_index, method_name_index, descriptor_index);
     
     // 解析方法名
     if (method_name_index == 0 || method_name_index >= class_info->constant_pool.count) {
-        printf("[方法解析] 错误: 无效的方法名索引 #%d (常量池大小: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 无效的方法名索引 #%d (常量池大小: %d)\n", 
                method_name_index, class_info->constant_pool.count);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
     j2me_constant_pool_entry_t* method_name_entry = &class_info->constant_pool.entries[method_name_index - 1];
     if (method_name_entry->tag != J2ME_CONSTANT_UTF8) {
-        printf("[方法解析] 错误: 方法名条目 #%d 不是UTF-8字符串 (类型: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 方法名条目 #%d 不是UTF-8字符串 (类型: %d)\n", 
                method_name_index, method_name_entry->tag);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
@@ -1557,21 +1886,21 @@ j2me_error_t j2me_interpreter_resolve_method_ref(j2me_class_t* class_info,
     
     // 解析描述符
     if (descriptor_index == 0 || descriptor_index >= class_info->constant_pool.count) {
-        printf("[方法解析] 错误: 无效的描述符索引 #%d (常量池大小: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 无效的描述符索引 #%d (常量池大小: %d)\n", 
                descriptor_index, class_info->constant_pool.count);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
     j2me_constant_pool_entry_t* descriptor_entry = &class_info->constant_pool.entries[descriptor_index - 1];
     if (descriptor_entry->tag != J2ME_CONSTANT_UTF8) {
-        printf("[方法解析] 错误: 描述符条目 #%d 不是UTF-8字符串 (类型: %d)\n", 
+        LOG_DEBUG("[方法解析] 错误: 描述符条目 #%d 不是UTF-8字符串 (类型: %d)\n", 
                descriptor_index, descriptor_entry->tag);
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
     *descriptor = descriptor_entry->info.utf8.bytes;
     
-    printf("[方法解析] 成功解析方法引用 #%d: %s.%s%s\n", 
+    LOG_DEBUG("[方法解析] 成功解析方法引用 #%d: %s.%s%s\n", 
            method_ref_index, *class_name, *method_name, *descriptor);
     
     return J2ME_SUCCESS;
@@ -1582,22 +1911,14 @@ j2me_error_t j2me_interpreter_execute_method(j2me_vm_t* vm, j2me_method_t* metho
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[解释器] 执行方法: %s.%s\n", 
-           method->owner_class ? method->owner_class->name : "unknown", 
-           method->name ? method->name : "unknown");
-    
     // 检查方法是否有字节码
     if (!method->bytecode || method->bytecode_length == 0) {
-        printf("[解释器] 警告: 方法无字节码 %s.%s - 这可能导致游戏无法正常运行\n", 
-               method->owner_class ? method->owner_class->name : "unknown",
-               method->name ? method->name : "unknown");
-        return J2ME_SUCCESS; // 本地方法或抽象方法，直接返回成功
+        return J2ME_SUCCESS;
     }
     
     // 创建栈帧
     j2me_stack_frame_t* frame = j2me_stack_frame_create(method->max_stack, method->max_locals);
     if (!frame) {
-        printf("[解释器] 错误: 创建栈帧失败\n");
         return J2ME_ERROR_OUT_OF_MEMORY;
     }
     
@@ -1613,43 +1934,52 @@ j2me_error_t j2me_interpreter_execute_method(j2me_vm_t* vm, j2me_method_t* metho
     }
     
     // 处理方法参数
-    // 根据方法描述符解析参数并放入局部变量表
     if (method->descriptor && args) {
         j2me_error_t param_result = j2me_interpreter_parse_method_parameters(
             method->descriptor, args, frame, &local_var_index);
-        if (param_result != J2ME_SUCCESS) {
-            printf("[解释器] 警告: 方法参数解析失败: %d\n", param_result);
-        }
     }
-    
-    printf("[解释器] 开始执行字节码，长度: %d bytes\n", method->bytecode_length);
     
     // 执行字节码
     j2me_error_t result = J2ME_SUCCESS;
     uint32_t instruction_count = 0;
-    const uint32_t max_instructions = 10000; // 防止无限循环
+    const uint32_t max_instructions = 1000000; // 增加到 100 万条指令
+    const uint32_t debug_interval = 10000; // 每10000条指令输出一次调试信息
+    
+    printf("[Interpreter] Starting execution, bytecode_length=%d\n", method->bytecode_length);
+    fflush(stdout);
     
     while (frame->pc < method->bytecode_length && instruction_count < max_instructions) {
         result = execute_single_instruction(vm, frame);
         
         if (result != J2ME_SUCCESS) {
-            if (result == J2ME_SUCCESS) { // 方法正常返回
-                break;
-            } else {
-                printf("[解释器] 执行指令失败: %d\n", result);
-                break;
-            }
+            break;
         }
         
         instruction_count++;
+        
+        // 定期输出调试信息
+        if (instruction_count % debug_interval == 0) {
+            printf("[Interpreter] Executed %d instructions, pc=%d/%d\n", 
+                   instruction_count, frame->pc, method->bytecode_length);
+            fflush(stdout);
+        }
     }
     
+    printf("[Interpreter] Execution finished: instructions=%d, result=%d\n", instruction_count, result);
+    fflush(stdout);
+    
     if (instruction_count >= max_instructions) {
-        printf("[解释器] 警告: 达到最大指令执行数限制\n");
+        printf("[Interpreter] ERROR: Max instructions reached!\n");
         result = J2ME_ERROR_RUNTIME_EXCEPTION;
     }
     
-    printf("[解释器] 方法执行完成，执行了 %d 条指令\n", instruction_count);
+    // 保存返回值到VM（如果有）
+    if (frame->has_return_value && vm) {
+        vm->last_method_return_value = frame->return_value;
+        vm->last_method_has_return_value = true;
+    } else if (vm) {
+        vm->last_method_has_return_value = false;
+    }
     
     // 清理栈帧
     j2me_stack_frame_destroy(frame);
@@ -1669,7 +1999,7 @@ j2me_thread_t* j2me_thread_create(uint32_t thread_id) {
     thread->thread_id = thread_id;
     thread->is_running = true;
     
-    printf("[线程] 创建线程成功 (ID: %d)\n", thread_id);
+    LOG_DEBUG("[线程] 创建线程成功 (ID: %d)\n", thread_id);
     return thread;
 }
 
@@ -1685,7 +2015,7 @@ void j2me_thread_destroy(j2me_thread_t* thread) {
         j2me_stack_frame_destroy(frame);
     }
     
-    printf("[线程] 销毁线程 (ID: %d)\n", thread->thread_id);
+    LOG_DEBUG("[线程] 销毁线程 (ID: %d)\n", thread->thread_id);
     free(thread);
 }
 
@@ -1699,7 +2029,7 @@ j2me_error_t j2me_thread_push_frame(j2me_thread_t* thread, j2me_stack_frame_t* f
     thread->current_frame = frame;
     thread->frame_count++;
     
-    printf("[线程] 推入栈帧 (线程ID: %d, 栈帧数: %zu)\n", thread->thread_id, thread->frame_count);
+    LOG_DEBUG("[线程] 推入栈帧 (线程ID: %d, 栈帧数: %zu)\n", thread->thread_id, thread->frame_count);
     return J2ME_SUCCESS;
 }
 
@@ -1712,6 +2042,6 @@ j2me_stack_frame_t* j2me_thread_pop_frame(j2me_thread_t* thread) {
     thread->current_frame = frame->previous;
     thread->frame_count--;
     
-    printf("[线程] 弹出栈帧 (线程ID: %d, 栈帧数: %zu)\n", thread->thread_id, thread->frame_count);
+    LOG_DEBUG("[线程] 弹出栈帧 (线程ID: %d, 栈帧数: %zu)\n", thread->thread_id, thread->frame_count);
     return frame;
 }

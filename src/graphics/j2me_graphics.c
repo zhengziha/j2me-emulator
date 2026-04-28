@@ -1,5 +1,6 @@
 #include "j2me_graphics.h"
 #include <stdlib.h>
+#include "j2me_log.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -16,27 +17,27 @@
 j2me_display_t* j2me_display_initialize(int width, int height, const char* title) {
     // 初始化SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("[图形] SDL初始化失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[图形] SDL初始化失败: %s\n", SDL_GetError());
         return NULL;
     }
     
     // 初始化SDL2_image
     int img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
     if (!(IMG_Init(img_flags) & img_flags)) {
-        printf("[图形] SDL2_image初始化失败: %s\n", IMG_GetError());
+        LOG_DEBUG("[图形] SDL2_image初始化失败: %s\n", IMG_GetError());
         SDL_Quit();
         return NULL;
     }
     
     // 初始化SDL2_ttf
     if (TTF_Init() == -1) {
-        printf("[图形] SDL2_ttf初始化失败: %s\n", TTF_GetError());
+        LOG_DEBUG("[图形] SDL2_ttf初始化失败: %s\n", TTF_GetError());
         IMG_Quit();
         SDL_Quit();
         return NULL;
     }
     
-    printf("[图形] SDL2_image和SDL2_ttf初始化成功\n");
+    LOG_DEBUG("[图形] SDL2_image和SDL2_ttf初始化成功\n");
     
     j2me_display_t* display = (j2me_display_t*)malloc(sizeof(j2me_display_t));
     if (!display) {
@@ -56,7 +57,7 @@ j2me_display_t* j2me_display_initialize(int width, int height, const char* title
     );
     
     if (!display->window) {
-        printf("[图形] 窗口创建失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[图形] 窗口创建失败: %s\n", SDL_GetError());
         free(display);
         SDL_Quit();
         return NULL;
@@ -69,7 +70,7 @@ j2me_display_t* j2me_display_initialize(int width, int height, const char* title
     );
     
     if (!display->renderer) {
-        printf("[图形] 渲染器创建失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[图形] 渲染器创建失败: %s\n", SDL_GetError());
         SDL_DestroyWindow(display->window);
         free(display);
         SDL_Quit();
@@ -84,7 +85,7 @@ j2me_display_t* j2me_display_initialize(int width, int height, const char* title
     // 设置渲染器混合模式
     SDL_SetRenderDrawBlendMode(display->renderer, SDL_BLENDMODE_BLEND);
     
-    printf("[图形] 显示系统初始化成功 (%dx%d)\n", width, height);
+    LOG_DEBUG("[图形] 显示系统初始化成功 (%dx%d)\n", width, height);
     return display;
 }
 
@@ -109,7 +110,7 @@ void j2me_display_destroy(j2me_display_t* display) {
     TTF_Quit();
     IMG_Quit();
     SDL_Quit();
-    printf("[图形] 显示系统已销毁\n");
+    LOG_DEBUG("[图形] 显示系统已销毁\n");
 }
 
 j2me_graphics_context_t* j2me_graphics_create_context(j2me_display_t* display, int width, int height) {
@@ -135,7 +136,7 @@ j2me_graphics_context_t* j2me_graphics_create_context(j2me_display_t* display, i
     );
     
     if (!context->canvas) {
-        printf("[图形] 画布纹理创建失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[图形] 画布纹理创建失败: %s\n", SDL_GetError());
         free(context);
         return NULL;
     }
@@ -163,7 +164,7 @@ j2me_graphics_context_t* j2me_graphics_create_context(j2me_display_t* display, i
     
     display->context = context;
     
-    printf("[图形] 图形上下文创建成功 (%dx%d)\n", width, height);
+    LOG_DEBUG("[图形] 图形上下文创建成功 (%dx%d)\n", width, height);
     return context;
 }
 
@@ -268,6 +269,21 @@ void j2me_display_refresh(j2me_display_t* display) {
         return;
     }
     
+    // 如果有画布纹理，先将其渲染到屏幕
+    if (display->context && display->context->canvas) {
+        // 将渲染目标设置为屏幕
+        SDL_SetRenderTarget(display->renderer, NULL);
+        
+        // 清除屏幕
+        SDL_SetRenderDrawColor(display->renderer, 0, 0, 0, 255);
+        SDL_RenderClear(display->renderer);
+        
+        // 将画布纹理渲染到屏幕
+        SDL_Rect dest_rect = {0, 0, display->screen_width, display->screen_height};
+        SDL_RenderCopy(display->renderer, display->context->canvas, NULL, &dest_rect);
+    }
+    
+    // 显示渲染结果
     SDL_RenderPresent(display->renderer);
 }
 
@@ -524,7 +540,7 @@ j2me_image_t* j2me_image_create(j2me_graphics_context_t* context, int width, int
     );
     
     if (!image->texture) {
-        printf("[图形] 错误: 创建图像纹理失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[图形] 错误: 创建图像纹理失败: %s\n", SDL_GetError());
         free(image);
         return NULL;
     }
@@ -539,7 +555,7 @@ j2me_image_t* j2me_image_create(j2me_graphics_context_t* context, int width, int
     SDL_RenderClear(context->renderer);
     SDL_SetRenderTarget(context->renderer, NULL);
     
-    printf("[图形] 创建可变图像: %dx%d\n", width, height);
+    LOG_DEBUG("[图形] 创建可变图像: %dx%d\n", width, height);
     return image;
 }
 
@@ -548,28 +564,28 @@ j2me_image_t* j2me_image_load(j2me_graphics_context_t* context, const char* file
         return NULL;
     }
     
-    printf("[图形] 开始加载图像: %s\n", filename);
+    LOG_DEBUG("[图形] 开始加载图像: %s\n", filename);
     
     // 使用SDL2_image加载图像
     SDL_Surface* surface = IMG_Load(filename);
     if (!surface) {
-        printf("[图形] 错误: 无法加载图像文件 %s: %s\n", filename, IMG_GetError());
+        LOG_DEBUG("[图形] 错误: 无法加载图像文件 %s: %s\n", filename, IMG_GetError());
         
         // 创建占位符图像
         j2me_image_t* placeholder = j2me_image_create(context, 32, 32);
         if (placeholder) {
-            printf("[图形] 创建占位符图像: %s (32x32)\n", filename);
+            LOG_DEBUG("[图形] 创建占位符图像: %s (32x32)\n", filename);
         }
         return placeholder;
     }
     
-    printf("[图形] 图像表面加载成功: %dx%d, 格式=%s\n", 
+    LOG_DEBUG("[图形] 图像表面加载成功: %dx%d, 格式=%s\n", 
            surface->w, surface->h, SDL_GetPixelFormatName(surface->format->format));
     
     // 创建纹理
     SDL_Texture* texture = SDL_CreateTextureFromSurface(context->renderer, surface);
     if (!texture) {
-        printf("[图形] 错误: 创建纹理失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[图形] 错误: 创建纹理失败: %s\n", SDL_GetError());
         SDL_FreeSurface(surface);
         return NULL;
     }
@@ -589,7 +605,7 @@ j2me_image_t* j2me_image_load(j2me_graphics_context_t* context, const char* file
     
     SDL_FreeSurface(surface);
     
-    printf("[图形] 图像加载成功: %s (%dx%d)\n", filename, image->width, image->height);
+    LOG_DEBUG("[图形] 图像加载成功: %s (%dx%d)\n", filename, image->width, image->height);
     return image;
 }
 
@@ -599,28 +615,28 @@ j2me_image_t* j2me_image_create_from_data(j2me_graphics_context_t* context,
         return NULL;
     }
     
-    printf("[图形] 从内存数据创建图像，大小: %zu bytes\n", data_size);
+    LOG_DEBUG("[图形] 从内存数据创建图像，大小: %zu bytes\n", data_size);
     
     // 创建SDL_RWops从内存数据
     SDL_RWops* rw = SDL_RWFromConstMem(data, (int)data_size);
     if (!rw) {
-        printf("[图形] 错误: 创建RWops失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[图形] 错误: 创建RWops失败: %s\n", SDL_GetError());
         return NULL;
     }
     
     // 使用SDL2_image从内存加载
     SDL_Surface* surface = IMG_Load_RW(rw, 1); // 1表示自动关闭RWops
     if (!surface) {
-        printf("[图形] 错误: 从内存加载图像失败: %s\n", IMG_GetError());
+        LOG_DEBUG("[图形] 错误: 从内存加载图像失败: %s\n", IMG_GetError());
         return NULL;
     }
     
-    printf("[图形] 从内存加载图像成功: %dx%d\n", surface->w, surface->h);
+    LOG_DEBUG("[图形] 从内存加载图像成功: %dx%d\n", surface->w, surface->h);
     
     // 创建纹理
     SDL_Texture* texture = SDL_CreateTextureFromSurface(context->renderer, surface);
     if (!texture) {
-        printf("[图形] 错误: 创建纹理失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[图形] 错误: 创建纹理失败: %s\n", SDL_GetError());
         SDL_FreeSurface(surface);
         return NULL;
     }
@@ -640,7 +656,7 @@ j2me_image_t* j2me_image_create_from_data(j2me_graphics_context_t* context,
     
     SDL_FreeSurface(surface);
     
-    printf("[图形] 从内存创建图像成功: %dx%d\n", image->width, image->height);
+    LOG_DEBUG("[图形] 从内存创建图像成功: %dx%d\n", image->width, image->height);
     return image;
 }
 
@@ -744,13 +760,13 @@ void j2me_graphics_load_default_font(j2me_graphics_context_t* context) {
         if (font) {
             context->current_font.ttf_font = font;
             strncpy(context->current_font.name, "Default", sizeof(context->current_font.name) - 1);
-            printf("[图形] 加载默认字体成功: %s (大小: %d)\n", 
+            LOG_DEBUG("[图形] 加载默认字体成功: %s (大小: %d)\n", 
                    font_paths[i], context->current_font.size);
             return;
         }
     }
     
-    printf("[图形] 警告: 无法加载TTF字体，将使用简化文本渲染\n");
+    LOG_DEBUG("[图形] 警告: 无法加载TTF字体，将使用简化文本渲染\n");
 }
 
 /**
@@ -833,7 +849,7 @@ bool j2me_graphics_load_font(j2me_graphics_context_t* context, const char* font_
             if (style & 0x04) ttf_style |= TTF_STYLE_UNDERLINE; // UNDERLINE
             TTF_SetFontStyle(font, ttf_style);
             
-            printf("[图形] 加载已知字体成功: %s (大小: %d, 样式: %d)\n", 
+            LOG_DEBUG("[图形] 加载已知字体成功: %s (大小: %d, 样式: %d)\n", 
                    known_fonts[k], size, style);
             return true;
         }
@@ -864,14 +880,14 @@ bool j2me_graphics_load_font(j2me_graphics_context_t* context, const char* font_
                 if (style & 0x04) ttf_style |= TTF_STYLE_UNDERLINE; // UNDERLINE
                 TTF_SetFontStyle(font, ttf_style);
                 
-                printf("[图形] 加载字体成功: %s (大小: %d, 样式: %d)\n", 
+                LOG_DEBUG("[图形] 加载字体成功: %s (大小: %d, 样式: %d)\n", 
                        font_path, size, style);
                 return true;
             }
         }
     }
     
-    printf("[图形] 警告: 无法加载字体 %s，保持当前字体\n", font_name);
+    LOG_DEBUG("[图形] 警告: 无法加载字体 %s，保持当前字体\n", font_name);
     return false;
 }
 
@@ -900,11 +916,11 @@ void j2me_graphics_render_ttf_text(j2me_graphics_context_t* context, const char*
     // 首先尝试UTF-8渲染（支持中文）
     SDL_Surface* text_surface = TTF_RenderUTF8_Blended(context->current_font.ttf_font, text, color);
     if (!text_surface) {
-        printf("[图形] UTF-8渲染失败，尝试普通渲染: %s\n", TTF_GetError());
+        LOG_DEBUG("[图形] UTF-8渲染失败，尝试普通渲染: %s\n", TTF_GetError());
         // 回退到普通文本渲染
         text_surface = TTF_RenderText_Blended(context->current_font.ttf_font, text, color);
         if (!text_surface) {
-            printf("[图形] 错误: 创建文本表面失败: %s\n", TTF_GetError());
+            LOG_DEBUG("[图形] 错误: 创建文本表面失败: %s\n", TTF_GetError());
             return;
         }
     }
@@ -912,7 +928,7 @@ void j2me_graphics_render_ttf_text(j2me_graphics_context_t* context, const char*
     // 创建纹理
     SDL_Texture* text_texture = SDL_CreateTextureFromSurface(context->renderer, text_surface);
     if (!text_texture) {
-        printf("[图形] 错误: 创建文本纹理失败: %s\n", SDL_GetError());
+        LOG_DEBUG("[图形] 错误: 创建文本纹理失败: %s\n", SDL_GetError());
         SDL_FreeSurface(text_surface);
         return;
     }

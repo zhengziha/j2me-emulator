@@ -211,6 +211,13 @@ j2me_class_t* j2me_class_loader_load_class(j2me_class_loader_t* loader, const ch
 j2me_class_t* j2me_class_loader_find_class(j2me_class_loader_t* loader, const char* class_name);
 
 /**
+ * @brief 加载JAR文件中的所有类
+ * @param loader 类加载器
+ * @return 错误码
+ */
+j2me_error_t j2me_class_loader_load_all_classes(j2me_class_loader_t* loader);
+
+/**
  * @brief 链接类
  * @param class_ptr 类指针
  * @return 错误码
@@ -241,6 +248,14 @@ j2me_method_t* j2me_class_find_method(j2me_class_t* class_ptr, const char* name,
  * @return 字段指针，未找到返回NULL
  */
 j2me_field_t* j2me_class_find_field(j2me_class_t* class_ptr, const char* name, const char* descriptor);
+
+/**
+ * @brief 检查类是否是指定类的子类
+ * @param class_ptr 要检查的类
+ * @param parent_class_name 父类名称（如"javax/microedition/lcdui/Canvas"）
+ * @return true表示是子类，false表示不是
+ */
+bool j2me_class_is_subclass_of(j2me_class_t* class_ptr, const char* parent_class_name);
 
 /**
  * @brief 从常量池获取UTF-8字符串

@@ -1,6 +1,7 @@
 #include "j2me_input.h"
 #include <stdlib.h>
 #include <string.h>
+#include "j2me_log.h"
 #include <stdio.h>
 
 /**
@@ -20,7 +21,7 @@ static void init_key_mapping(j2me_input_manager_t* manager) {
         manager->sdl_to_midp_map[i] = 0;
     }
     
-    printf("[输入系统] 开始初始化键码映射...\n");
+    LOG_DEBUG("[输入系统] 开始初始化键码映射...\n");
     
     // 数字键映射 - 检查键码范围
     if (SDLK_0 < 512) manager->sdl_to_midp_map[SDLK_0] = KEY_NUM0;
@@ -34,7 +35,7 @@ static void init_key_mapping(j2me_input_manager_t* manager) {
     if (SDLK_8 < 512) manager->sdl_to_midp_map[SDLK_8] = KEY_NUM8;
     if (SDLK_9 < 512) manager->sdl_to_midp_map[SDLK_9] = KEY_NUM9;
     
-    printf("[输入系统] 数字键映射完成\n");
+    LOG_DEBUG("[输入系统] 数字键映射完成\n");
     
     // 特殊键映射
     if (SDLK_ASTERISK < 512) manager->sdl_to_midp_map[SDLK_ASTERISK] = KEY_STAR;
@@ -46,7 +47,7 @@ static void init_key_mapping(j2me_input_manager_t* manager) {
     if (SDLK_LEFT < 512) manager->sdl_to_midp_map[SDLK_LEFT] = KEY_LEFT;
     if (SDLK_RIGHT < 512) manager->sdl_to_midp_map[SDLK_RIGHT] = KEY_RIGHT;
     
-    printf("[输入系统] 方向键映射完成\n");
+    LOG_DEBUG("[输入系统] 方向键映射完成\n");
     
     // 游戏键映射
     if (SDLK_SPACE < 512) manager->sdl_to_midp_map[SDLK_SPACE] = KEY_FIRE;
@@ -65,7 +66,7 @@ static void init_key_mapping(j2me_input_manager_t* manager) {
     if (SDLK_BACKSPACE < 512) manager->sdl_to_midp_map[SDLK_BACKSPACE] = KEY_CLEAR;
     if (SDLK_TAB < 512) manager->sdl_to_midp_map[SDLK_TAB] = KEY_SELECT;
     
-    printf("[输入系统] 键码映射初始化完成\n");
+    LOG_DEBUG("[输入系统] 键码映射初始化完成\n");
 }
 
 j2me_input_manager_t* j2me_input_manager_create(void) {
@@ -79,14 +80,14 @@ j2me_input_manager_t* j2me_input_manager_create(void) {
     // 初始化键码映射
     init_key_mapping(manager);
     
-    printf("[输入系统] 输入管理器创建成功\n");
+    LOG_DEBUG("[输入系统] 输入管理器创建成功\n");
     return manager;
 }
 
 void j2me_input_manager_destroy(j2me_input_manager_t* manager) {
     if (manager) {
         free(manager);
-        printf("[输入系统] 输入管理器已销毁\n");
+        LOG_DEBUG("[输入系统] 输入管理器已销毁\n");
     }
 }
 
@@ -193,7 +194,7 @@ bool j2me_input_handle_sdl_event(j2me_input_manager_t* manager, SDL_Event* event
                                (char)event->key.keysym.sym : 0;
                 trigger_key_event(manager, INPUT_EVENT_KEY_PRESSED, midp_key, key_char);
                 
-                printf("[输入系统] 键按下: SDL=%d, MIDP=%d, 字符='%c'\n", 
+                LOG_DEBUG("[输入系统] 键按下: SDL=%d, MIDP=%d, 字符='%c'\n", 
                        event->key.keysym.sym, midp_key, key_char ? key_char : '?');
                 return true;
             }
@@ -216,7 +217,7 @@ bool j2me_input_handle_sdl_event(j2me_input_manager_t* manager, SDL_Event* event
                 // 触发事件
                 trigger_key_event(manager, INPUT_EVENT_KEY_RELEASED, midp_key, 0);
                 
-                printf("[输入系统] 键释放: SDL=%d, MIDP=%d\n", 
+                LOG_DEBUG("[输入系统] 键释放: SDL=%d, MIDP=%d\n", 
                        event->key.keysym.sym, midp_key);
                 return true;
             }
@@ -232,7 +233,7 @@ bool j2me_input_handle_sdl_event(j2me_input_manager_t* manager, SDL_Event* event
                 trigger_pointer_event(manager, INPUT_EVENT_POINTER_PRESSED, 
                                      event->button.x, event->button.y);
                 
-                printf("[输入系统] 指针按下: (%d,%d)\n", event->button.x, event->button.y);
+                LOG_DEBUG("[输入系统] 指针按下: (%d,%d)\n", event->button.x, event->button.y);
                 return true;
             }
             break;
@@ -247,7 +248,7 @@ bool j2me_input_handle_sdl_event(j2me_input_manager_t* manager, SDL_Event* event
                 trigger_pointer_event(manager, INPUT_EVENT_POINTER_RELEASED, 
                                      event->button.x, event->button.y);
                 
-                printf("[输入系统] 指针释放: (%d,%d)\n", event->button.x, event->button.y);
+                LOG_DEBUG("[输入系统] 指针释放: (%d,%d)\n", event->button.x, event->button.y);
                 return true;
             }
             break;
@@ -406,7 +407,7 @@ void j2me_input_reset(j2me_input_manager_t* manager) {
     manager->pointer_y = 0;
     manager->pointer_pressed = false;
     
-    printf("[输入系统] 输入状态已重置\n");
+    LOG_DEBUG("[输入系统] 输入状态已重置\n");
 }
 
 int j2me_input_get_key_states(j2me_input_manager_t* manager) {

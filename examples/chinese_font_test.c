@@ -5,6 +5,7 @@
  * 测试中文字体加载、中文文本渲染和字体度量功能
  */
 
+#include "j2me_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,17 +19,17 @@
  * @brief 测试中文字体加载
  */
 void test_chinese_font_loading(j2me_graphics_context_t* context) {
-    printf("\n=== 测试中文字体加载 ===\n");
+    LOG_DEBUG("\n=== 测试中文字体加载 ===\n");
     
     // 测试默认字体加载（应该优先加载中文字体）
-    printf("📝 测试默认中文字体加载...\n");
+    LOG_DEBUG("📝 测试默认中文字体加载...\n");
     j2me_graphics_load_default_font(context);
     
     if (context->current_font.ttf_font) {
-        printf("✅ 默认字体加载成功: %s (大小: %d)\n", 
+        LOG_DEBUG("✅ 默认字体加载成功: %s (大小: %d)\n", 
                context->current_font.name, context->current_font.size);
     } else {
-        printf("⚠️ 默认字体加载失败，将使用简化渲染\n");
+        LOG_DEBUG("⚠️ 默认字体加载失败，将使用简化渲染\n");
     }
     
     // 测试不同中文字体加载
@@ -37,13 +38,13 @@ void test_chinese_font_loading(j2me_graphics_context_t* context) {
     };
     
     for (int i = 0; chinese_fonts[i] != NULL; i++) {
-        printf("📝 尝试加载中文字体: %s...\n", chinese_fonts[i]);
+        LOG_DEBUG("📝 尝试加载中文字体: %s...\n", chinese_fonts[i]);
         bool success = j2me_graphics_load_font(context, chinese_fonts[i], 16, 0);
         if (success) {
-            printf("✅ 中文字体 %s 加载成功\n", chinese_fonts[i]);
+            LOG_DEBUG("✅ 中文字体 %s 加载成功\n", chinese_fonts[i]);
             break; // 找到一个可用字体就停止
         } else {
-            printf("❌ 中文字体 %s 加载失败\n", chinese_fonts[i]);
+            LOG_DEBUG("❌ 中文字体 %s 加载失败\n", chinese_fonts[i]);
         }
     }
 }
@@ -52,7 +53,7 @@ void test_chinese_font_loading(j2me_graphics_context_t* context) {
  * @brief 测试中文字体度量
  */
 void test_chinese_font_metrics(j2me_graphics_context_t* context) {
-    printf("\n=== 测试中文字体度量 ===\n");
+    LOG_DEBUG("\n=== 测试中文字体度量 ===\n");
     
     const char* chinese_texts[] = {
         "你好，世界！",
@@ -67,19 +68,19 @@ void test_chinese_font_metrics(j2me_graphics_context_t* context) {
         
         // 测试字符串宽度
         int text_width = j2me_graphics_get_string_width(context, text);
-        printf("📏 文本宽度: \"%s\" = %d 像素\n", text, text_width);
+        LOG_DEBUG("📏 文本宽度: \"%s\" = %d 像素\n", text, text_width);
     }
     
     // 测试字体高度
     int font_height = j2me_graphics_get_font_height(context);
-    printf("📏 字体高度: %d 像素\n", font_height);
+    LOG_DEBUG("📏 字体高度: %d 像素\n", font_height);
     
     // 测试字体基线
     int baseline = j2me_graphics_get_font_baseline(context);
-    printf("📏 字体基线: %d 像素\n", baseline);
+    LOG_DEBUG("📏 字体基线: %d 像素\n", baseline);
     
     // 测试中文字符宽度
-    printf("📏 中文字符宽度测试:\n");
+    LOG_DEBUG("📏 中文字符宽度测试:\n");
     const char* chinese_chars = "你好世界英文123";
     for (int i = 0; chinese_chars[i] != '\0'; ) {
         // 处理UTF-8编码的中文字符
@@ -87,7 +88,7 @@ void test_chinese_font_metrics(j2me_graphics_context_t* context) {
         if (c < 0x80) {
             // ASCII字符
             int char_width = j2me_graphics_get_char_width(context, chinese_chars[i]);
-            printf("   '%c': %d 像素\n", chinese_chars[i], char_width);
+            LOG_DEBUG("   '%c': %d 像素\n", chinese_chars[i], char_width);
             i++;
         } else {
             // UTF-8多字节字符，跳过
@@ -103,7 +104,7 @@ void test_chinese_font_metrics(j2me_graphics_context_t* context) {
  * @brief 测试中文文本渲染
  */
 void test_chinese_text_rendering(j2me_graphics_context_t* context) {
-    printf("\n=== 测试中文文本渲染 ===\n");
+    LOG_DEBUG("\n=== 测试中文文本渲染 ===\n");
     
     // 清除屏幕
     j2me_graphics_clear(context);
@@ -136,7 +137,7 @@ void test_chinese_text_rendering(j2me_graphics_context_t* context) {
         int y = 50 + i * 35;
         j2me_graphics_draw_string(context, chinese_test_texts[i], 50, y, 0x00); // LEFT|TOP
         
-        printf("🎨 渲染中文文本 %d: \"%s\" 在位置 (50, %d)\n", i + 1, chinese_test_texts[i], y);
+        LOG_DEBUG("🎨 渲染中文文本 %d: \"%s\" 在位置 (50, %d)\n", i + 1, chinese_test_texts[i], y);
     }
     
     // 测试不同锚点的中文文本
@@ -164,14 +165,14 @@ void test_chinese_text_rendering(j2me_graphics_context_t* context) {
     j2me_graphics_set_color(context, (j2me_color_t){100, 100, 255, 255});
     j2me_graphics_draw_string(context, anchor_text, center_x, center_y, 0x22);
     
-    printf("🎯 中文锚点测试完成，中心点: (%d, %d)\n", center_x, center_y);
+    LOG_DEBUG("🎯 中文锚点测试完成，中心点: (%d, %d)\n", center_x, center_y);
 }
 
 /**
  * @brief 测试不同中文字体大小
  */
 void test_chinese_font_sizes(j2me_graphics_context_t* context) {
-    printf("\n=== 测试不同中文字体大小 ===\n");
+    LOG_DEBUG("\n=== 测试不同中文字体大小 ===\n");
     
     int sizes[] = {10, 12, 14, 16, 18, 20, 24, 28, 32, 36};
     int num_sizes = sizeof(sizes) / sizeof(sizes[0]);
@@ -189,7 +190,7 @@ void test_chinese_font_sizes(j2me_graphics_context_t* context) {
         int y = 50 + i * 40;
         j2me_graphics_draw_string(context, size_text, 50, y, 0x00);
         
-        printf("📏 中文字体大小 %d: 高度 = %d 像素\n", 
+        LOG_DEBUG("📏 中文字体大小 %d: 高度 = %d 像素\n", 
                sizes[i], j2me_graphics_get_font_height(context));
     }
 }
@@ -198,7 +199,7 @@ void test_chinese_font_sizes(j2me_graphics_context_t* context) {
  * @brief 测试中文字体样式
  */
 void test_chinese_font_styles(j2me_graphics_context_t* context) {
-    printf("\n=== 测试中文字体样式 ===\n");
+    LOG_DEBUG("\n=== 测试中文字体样式 ===\n");
     
     const char* style_names[] = {"普通", "粗体", "斜体", "粗斜体"};
     const char* style_texts[] = {
@@ -219,7 +220,7 @@ void test_chinese_font_styles(j2me_graphics_context_t* context) {
         int y = 50 + i * 40;
         j2me_graphics_draw_string(context, style_texts[i], 50, y, 0x00);
         
-        printf("🎨 中文字体样式 %s (代码: %d) 测试完成\n", style_names[i], styles[i]);
+        LOG_DEBUG("🎨 中文字体样式 %s (代码: %d) 测试完成\n", style_names[i], styles[i]);
     }
 }
 
@@ -227,13 +228,13 @@ void test_chinese_font_styles(j2me_graphics_context_t* context) {
  * @brief 中文字体系统演示循环
  */
 void chinese_font_demo_loop(j2me_vm_t* vm) {
-    printf("\n=== 中文字体系统演示 ===\n");
-    printf("🎮 控制说明:\n");
-    printf("   - 数字键 1-5: 切换不同演示\n");
-    printf("   - ESC键: 退出演示\n\n");
+    LOG_DEBUG("\n=== 中文字体系统演示 ===\n");
+    LOG_DEBUG("🎮 控制说明:\n");
+    LOG_DEBUG("   - 数字键 1-5: 切换不同演示\n");
+    LOG_DEBUG("   - ESC键: 退出演示\n\n");
     
     if (!vm->display || !vm->display->context) {
-        printf("❌ 图形上下文未初始化\n");
+        LOG_DEBUG("❌ 图形上下文未初始化\n");
         return;
     }
     
@@ -257,7 +258,7 @@ void chinese_font_demo_loop(j2me_vm_t* vm) {
             for (int i = 1; i <= 5; i++) {
                 if (j2me_input_is_key_pressed(vm->input_manager, KEY_NUM0 + i)) {
                     demo_mode = i;
-                    printf("🔄 切换到中文演示模式 %d\n", demo_mode);
+                    LOG_DEBUG("🔄 切换到中文演示模式 %d\n", demo_mode);
                 }
             }
         }
@@ -345,16 +346,16 @@ void chinese_font_demo_loop(j2me_vm_t* vm) {
         usleep(33000);
     }
     
-    printf("✅ 中文字体系统演示结束\n");
+    LOG_DEBUG("✅ 中文字体系统演示结束\n");
 }
 
 /**
  * @brief 主测试函数
  */
 int main() {
-    printf("中文字体系统测试程序\n");
-    printf("====================\n");
-    printf("测试中文字体加载、中文文本渲染和字体度量功能\n\n");
+    LOG_DEBUG("中文字体系统测试程序\n");
+    LOG_DEBUG("====================\n");
+    LOG_DEBUG("测试中文字体加载、中文文本渲染和字体度量功能\n\n");
     
     // 创建虚拟机配置
     j2me_vm_config_t config = {
@@ -366,22 +367,22 @@ int main() {
     // 创建虚拟机
     j2me_vm_t* vm = j2me_vm_create(&config);
     if (!vm) {
-        printf("❌ 创建虚拟机失败\n");
+        LOG_DEBUG("❌ 创建虚拟机失败\n");
         return 1;
     }
-    printf("✅ 虚拟机创建成功\n");
+    LOG_DEBUG("✅ 虚拟机创建成功\n");
     
     // 初始化虚拟机
     j2me_error_t result = j2me_vm_initialize(vm);
     if (result != J2ME_SUCCESS) {
-        printf("❌ 虚拟机初始化失败: %d\n", result);
+        LOG_DEBUG("❌ 虚拟机初始化失败: %d\n", result);
         j2me_vm_destroy(vm);
         return 1;
     }
-    printf("✅ 虚拟机初始化成功\n");
+    LOG_DEBUG("✅ 虚拟机初始化成功\n");
     
     if (!vm->display || !vm->display->context) {
-        printf("❌ 图形上下文未初始化\n");
+        LOG_DEBUG("❌ 图形上下文未初始化\n");
         j2me_vm_destroy(vm);
         return 1;
     }
@@ -392,29 +393,29 @@ int main() {
     test_chinese_font_loading(context);
     test_chinese_font_metrics(context);
     
-    printf("\n⏳ 等待3秒后开始中文演示...\n");
+    LOG_DEBUG("\n⏳ 等待3秒后开始中文演示...\n");
     sleep(3);
     
     // 运行中文字体演示
     chinese_font_demo_loop(vm);
     
-    printf("\n⏳ 等待3秒以查看最终结果...\n");
+    LOG_DEBUG("\n⏳ 等待3秒以查看最终结果...\n");
     sleep(3);
     
     // 清理虚拟机
     j2me_vm_destroy(vm);
     
-    printf("\n=== 中文字体系统测试总结 ===\n");
-    printf("✅ 中文字体系统: 初始化和加载正常\n");
-    printf("✅ 中文字体度量: 宽度、高度、基线计算正常\n");
-    printf("✅ 中文文本渲染: 真实中文字体渲染正常\n");
-    printf("✅ 中文字体样式: 不同大小和样式支持正常\n");
-    printf("✅ 中文锚点系统: 文本定位和对齐正常\n");
-    printf("✅ 中文颜色支持: 多色中文文本渲染正常\n");
-    printf("✅ 中文动态渲染: 实时中文文本更新正常\n");
+    LOG_DEBUG("\n=== 中文字体系统测试总结 ===\n");
+    LOG_DEBUG("✅ 中文字体系统: 初始化和加载正常\n");
+    LOG_DEBUG("✅ 中文字体度量: 宽度、高度、基线计算正常\n");
+    LOG_DEBUG("✅ 中文文本渲染: 真实中文字体渲染正常\n");
+    LOG_DEBUG("✅ 中文字体样式: 不同大小和样式支持正常\n");
+    LOG_DEBUG("✅ 中文锚点系统: 文本定位和对齐正常\n");
+    LOG_DEBUG("✅ 中文颜色支持: 多色中文文本渲染正常\n");
+    LOG_DEBUG("✅ 中文动态渲染: 实时中文文本更新正常\n");
     
-    printf("\n🎉 中文字体系统测试成功！\n");
-    printf("💡 J2ME模拟器现在支持真实的中文字体渲染！\n");
+    LOG_DEBUG("\n🎉 中文字体系统测试成功！\n");
+    LOG_DEBUG("💡 J2ME模拟器现在支持真实的中文字体渲染！\n");
     
     return 0;
 }

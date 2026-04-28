@@ -2,6 +2,7 @@
 #include "j2me_vm.h"
 #include <stdlib.h>
 #include <string.h>
+#include "j2me_log.h"
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -66,7 +67,7 @@ j2me_network_manager_t* j2me_network_manager_create(j2me_vm_t* vm) {
     manager->timeout_ms = DEFAULT_TIMEOUT_MS;
     manager->proxy_enabled = false;
     
-    printf("[网络系统] 网络管理器创建成功 (真实网络实现)\n");
+    LOG_DEBUG("[网络系统] 网络管理器创建成功 (真实网络实现)\n");
     return manager;
 }
 
@@ -97,7 +98,7 @@ void j2me_network_manager_destroy(j2me_network_manager_t* manager) {
         manager->connections = NULL;
     }
     
-    printf("[网络系统] 网络管理器已销毁\n");
+    LOG_DEBUG("[网络系统] 网络管理器已销毁\n");
     free(manager);
 }
 
@@ -109,13 +110,13 @@ j2me_error_t j2me_network_initialize(j2me_network_manager_t* manager) {
     // 初始化libcurl
     CURLcode curl_result = curl_global_init(CURL_GLOBAL_DEFAULT);
     if (curl_result != CURLE_OK) {
-        printf("[网络系统] libcurl初始化失败: %s\n", curl_easy_strerror(curl_result));
+        LOG_DEBUG("[网络系统] libcurl初始化失败: %s\n", curl_easy_strerror(curl_result));
         return J2ME_ERROR_INITIALIZATION_FAILED;
     }
     
     manager->initialized = true;
     
-    printf("[网络系统] 网络系统初始化成功 (libcurl + BSD Socket)\n");
+    LOG_DEBUG("[网络系统] 网络系统初始化成功 (libcurl + BSD Socket)\n");
     return J2ME_SUCCESS;
 }
 
@@ -132,7 +133,7 @@ void j2me_network_shutdown(j2me_network_manager_t* manager) {
     
     manager->initialized = false;
     
-    printf("[网络系统] 网络系统已关闭 (libcurl已清理)\n");
+    LOG_DEBUG("[网络系统] 网络系统已关闭 (libcurl已清理)\n");
 }
 
 /**
@@ -230,7 +231,7 @@ j2me_connection_t* j2me_connection_open(j2me_vm_t* vm, j2me_network_manager_t* m
     
     int slot = find_free_connection_slot(manager);
     if (slot < 0) {
-        printf("[网络系统] 连接数量已达上限\n");
+        LOG_DEBUG("[网络系统] 连接数量已达上限\n");
         return NULL;
     }
     
@@ -267,7 +268,7 @@ j2me_connection_t* j2me_connection_open(j2me_vm_t* vm, j2me_network_manager_t* m
     manager->active_connections++;
     manager->connections_opened++;
     
-    printf("[网络系统] 创建连接 #%d: %s\n", slot, url);
+    LOG_DEBUG("[网络系统] 创建连接 #%d: %s\n", slot, url);
     
     return connection;
 }
@@ -322,7 +323,7 @@ void j2me_connection_close(j2me_connection_t* connection) {
     
     connection->state = CONNECTION_STATE_CLOSED;
     
-    printf("[网络系统] 连接已关闭\n");
+    LOG_DEBUG("[网络系统] 连接已关闭\n");
     free(connection);
 }
 
@@ -337,7 +338,7 @@ j2me_error_t j2me_http_set_request_method(j2me_connection_t* connection, j2me_ht
     
     connection->http_method = method;
     
-    printf("[网络系统] 设置HTTP方法: %s\n", j2me_network_get_method_name(method));
+    LOG_DEBUG("[网络系统] 设置HTTP方法: %s\n", j2me_network_get_method_name(method));
     return J2ME_SUCCESS;
 }
 
@@ -361,7 +362,7 @@ j2me_error_t j2me_http_set_request_property(j2me_connection_t* connection, const
         }
     }
     
-    printf("[网络系统] 设置HTTP头: %s = %s\n", key, value);
+    LOG_DEBUG("[网络系统] 设置HTTP头: %s = %s\n", key, value);
     return J2ME_SUCCESS;
 }
 
@@ -493,7 +494,7 @@ j2me_error_t j2me_http_send_request(j2me_connection_t* connection, const uint8_t
         return J2ME_ERROR_INVALID_PARAMETER;
     }
     
-    printf("[网络系统] 发送真实HTTP请求: %s %s://%s:%d%s\n", 
+    LOG_DEBUG("[网络系统] 发送真实HTTP请求: %s %s://%s:%d%s\n", 
            j2me_network_get_method_name(connection->http_method),
            connection->type == CONNECTION_TYPE_HTTPS ? "https" : "http",
            connection->host, connection->port, connection->path);
@@ -501,7 +502,7 @@ j2me_error_t j2me_http_send_request(j2me_connection_t* connection, const uint8_t
     // 创建CURL句柄
     CURL* curl = curl_easy_init();
     if (!curl) {
-        printf("[网络系统] 创建CURL句柄失败\n");
+        LOG_DEBUG("[网络系统] 创建CURL句柄失败\n");
         return J2ME_ERROR_INITIALIZATION_FAILED;
     }
     
@@ -586,7 +587,7 @@ j2me_error_t j2me_http_send_request(j2me_connection_t* connection, const uint8_t
     CURLcode res = curl_easy_perform(curl);
     
     if (res != CURLE_OK) {
-        printf("[网络系统] HTTP请求失败: %s\n", curl_easy_strerror(res));
+        LOG_DEBUG("[网络系统] HTTP请求失败: %s\n", curl_easy_strerror(res));
         free(response_data.data);
         curl_easy_cleanup(curl);
         if (headers) curl_slist_free_all(headers);
@@ -612,7 +613,7 @@ j2me_error_t j2me_http_send_request(j2me_connection_t* connection, const uint8_t
     
     connection->state = CONNECTION_STATE_OPEN;
     
-    printf("[网络系统] HTTP请求成功: 响应码=%d, 数据大小=%zu bytes\n", 
+    LOG_DEBUG("[网络系统] HTTP请求成功: 响应码=%d, 数据大小=%zu bytes\n", 
            connection->response_code, connection->response_body_size);
     
     return J2ME_SUCCESS;
@@ -634,7 +635,7 @@ j2me_error_t j2me_http_receive_response(j2me_connection_t* connection, uint8_t* 
     memcpy(buffer, connection->response_body, copy_size);
     *bytes_read = copy_size;
     
-    printf("[网络系统] 接收HTTP响应: %zu bytes\n", copy_size);
+    LOG_DEBUG("[网络系统] 接收HTTP响应: %zu bytes\n", copy_size);
     
     return J2ME_SUCCESS;
 }
@@ -653,12 +654,12 @@ j2me_connection_t* j2me_socket_open(j2me_vm_t* vm, j2me_network_manager_t* manag
         return NULL;
     }
     
-    printf("[网络系统] 创建真实Socket连接: %s:%d\n", host, port);
+    LOG_DEBUG("[网络系统] 创建真实Socket连接: %s:%d\n", host, port);
     
     // 创建Socket
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        printf("[网络系统] 创建Socket失败: %s\n", strerror(errno));
+        LOG_DEBUG("[网络系统] 创建Socket失败: %s\n", strerror(errno));
         j2me_connection_close(connection);
         return NULL;
     }
@@ -670,7 +671,7 @@ j2me_connection_t* j2me_socket_open(j2me_vm_t* vm, j2me_network_manager_t* manag
     // 解析主机名
     struct hostent* server = gethostbyname(host);
     if (!server) {
-        printf("[网络系统] 解析主机名失败: %s\n", host);
+        LOG_DEBUG("[网络系统] 解析主机名失败: %s\n", host);
         close(sockfd);
         j2me_connection_close(connection);
         return NULL;
@@ -688,7 +689,7 @@ j2me_connection_t* j2me_socket_open(j2me_vm_t* vm, j2me_network_manager_t* manag
     int result = connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
     
     if (result < 0 && errno != EINPROGRESS) {
-        printf("[网络系统] Socket连接失败: %s\n", strerror(errno));
+        LOG_DEBUG("[网络系统] Socket连接失败: %s\n", strerror(errno));
         close(sockfd);
         j2me_connection_close(connection);
         return NULL;
@@ -706,7 +707,7 @@ j2me_connection_t* j2me_socket_open(j2me_vm_t* vm, j2me_network_manager_t* manag
         
         result = select(sockfd + 1, NULL, &write_fds, NULL, &timeout);
         if (result <= 0) {
-            printf("[网络系统] Socket连接超时\n");
+            LOG_DEBUG("[网络系统] Socket连接超时\n");
             close(sockfd);
             j2me_connection_close(connection);
             return NULL;
@@ -716,7 +717,7 @@ j2me_connection_t* j2me_socket_open(j2me_vm_t* vm, j2me_network_manager_t* manag
         int error;
         socklen_t len = sizeof(error);
         if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0 || error != 0) {
-            printf("[网络系统] Socket连接失败: %s\n", strerror(error));
+            LOG_DEBUG("[网络系统] Socket连接失败: %s\n", strerror(error));
             close(sockfd);
             j2me_connection_close(connection);
             return NULL;
@@ -726,7 +727,7 @@ j2me_connection_t* j2me_socket_open(j2me_vm_t* vm, j2me_network_manager_t* manag
     connection->socket_fd = sockfd;
     connection->state = CONNECTION_STATE_OPEN;
     
-    printf("[网络系统] Socket连接成功: fd=%d\n", sockfd);
+    LOG_DEBUG("[网络系统] Socket连接成功: fd=%d\n", sockfd);
     
     return connection;
 }
@@ -746,12 +747,12 @@ j2me_connection_t* j2me_server_socket_open(j2me_vm_t* vm, j2me_network_manager_t
     
     connection->is_server = true;
     
-    printf("[网络系统] 创建真实服务器Socket: 端口%d\n", port);
+    LOG_DEBUG("[网络系统] 创建真实服务器Socket: 端口%d\n", port);
     
     // 创建服务器Socket
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        printf("[网络系统] 创建服务器Socket失败: %s\n", strerror(errno));
+        LOG_DEBUG("[网络系统] 创建服务器Socket失败: %s\n", strerror(errno));
         j2me_connection_close(connection);
         return NULL;
     }
@@ -759,7 +760,7 @@ j2me_connection_t* j2me_server_socket_open(j2me_vm_t* vm, j2me_network_manager_t
     // 设置Socket选项
     int opt = 1;
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        printf("[网络系统] 设置Socket选项失败: %s\n", strerror(errno));
+        LOG_DEBUG("[网络系统] 设置Socket选项失败: %s\n", strerror(errno));
         close(sockfd);
         j2me_connection_close(connection);
         return NULL;
@@ -773,7 +774,7 @@ j2me_connection_t* j2me_server_socket_open(j2me_vm_t* vm, j2me_network_manager_t
     server_addr.sin_port = htons(port);
     
     if (bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-        printf("[网络系统] 绑定Socket失败: %s\n", strerror(errno));
+        LOG_DEBUG("[网络系统] 绑定Socket失败: %s\n", strerror(errno));
         close(sockfd);
         j2me_connection_close(connection);
         return NULL;
@@ -781,7 +782,7 @@ j2me_connection_t* j2me_server_socket_open(j2me_vm_t* vm, j2me_network_manager_t
     
     // 开始监听
     if (listen(sockfd, 5) < 0) {
-        printf("[网络系统] 监听Socket失败: %s\n", strerror(errno));
+        LOG_DEBUG("[网络系统] 监听Socket失败: %s\n", strerror(errno));
         close(sockfd);
         j2me_connection_close(connection);
         return NULL;
@@ -790,7 +791,7 @@ j2me_connection_t* j2me_server_socket_open(j2me_vm_t* vm, j2me_network_manager_t
     connection->socket_fd = sockfd;
     connection->state = CONNECTION_STATE_OPEN;
     
-    printf("[网络系统] 服务器Socket创建成功: fd=%d, 端口=%d\n", sockfd, port);
+    LOG_DEBUG("[网络系统] 服务器Socket创建成功: fd=%d, 端口=%d\n", sockfd, port);
     
     return connection;
 }
@@ -800,7 +801,7 @@ j2me_connection_t* j2me_server_socket_accept(j2me_connection_t* server_socket) {
         return NULL;
     }
     
-    printf("[网络系统] 等待客户端连接...\n");
+    LOG_DEBUG("[网络系统] 等待客户端连接...\n");
     
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
@@ -822,7 +823,7 @@ j2me_connection_t* j2me_server_socket_accept(j2me_connection_t* server_socket) {
     // 接受连接
     int client_fd = accept(server_socket->socket_fd, (struct sockaddr*)&client_addr, &client_len);
     if (client_fd < 0) {
-        printf("[网络系统] 接受连接失败: %s\n", strerror(errno));
+        LOG_DEBUG("[网络系统] 接受连接失败: %s\n", strerror(errno));
         return NULL;
     }
     
@@ -846,7 +847,7 @@ j2me_connection_t* j2me_server_socket_accept(j2me_connection_t* server_socket) {
     client_connection->host = strdup(inet_ntoa(client_addr.sin_addr));
     client_connection->port = ntohs(client_addr.sin_port);
     
-    printf("[网络系统] 接受客户端连接: %s:%d (fd=%d)\n", 
+    LOG_DEBUG("[网络系统] 接受客户端连接: %s:%d (fd=%d)\n", 
            client_connection->host, client_connection->port, client_fd);
     
     return client_connection;
@@ -872,14 +873,14 @@ j2me_error_t j2me_socket_send(j2me_connection_t* connection, const uint8_t* data
             // 缓冲区满，稍后重试
             return J2ME_SUCCESS;
         } else {
-            printf("[网络系统] Socket发送失败: %s\n", strerror(errno));
+            LOG_DEBUG("[网络系统] Socket发送失败: %s\n", strerror(errno));
             return J2ME_ERROR_IO_EXCEPTION;
         }
     }
     
     *bytes_sent = (size_t)result;
     
-    printf("[网络系统] Socket发送数据: %zu bytes (实际发送: %zu)\n", size, *bytes_sent);
+    LOG_DEBUG("[网络系统] Socket发送数据: %zu bytes (实际发送: %zu)\n", size, *bytes_sent);
     
     return J2ME_SUCCESS;
 }
@@ -918,19 +919,19 @@ j2me_error_t j2me_socket_receive(j2me_connection_t* connection, uint8_t* buffer,
             // 没有数据可读
             return J2ME_SUCCESS;
         } else {
-            printf("[网络系统] Socket接收失败: %s\n", strerror(errno));
+            LOG_DEBUG("[网络系统] Socket接收失败: %s\n", strerror(errno));
             return J2ME_ERROR_IO_EXCEPTION;
         }
     } else if (recv_result == 0) {
         // 连接已关闭
-        printf("[网络系统] Socket连接已关闭\n");
+        LOG_DEBUG("[网络系统] Socket连接已关闭\n");
         connection->state = CONNECTION_STATE_CLOSED;
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
     *bytes_received = (size_t)recv_result;
     
-    printf("[网络系统] Socket接收数据: %zu bytes\n", *bytes_received);
+    LOG_DEBUG("[网络系统] Socket接收数据: %zu bytes\n", *bytes_received);
     
     return J2ME_SUCCESS;
 }
@@ -945,12 +946,12 @@ j2me_connection_t* j2me_datagram_open(j2me_vm_t* vm, j2me_network_manager_t* man
         return NULL;
     }
     
-    printf("[网络系统] 创建真实数据报连接: %s\n", url);
+    LOG_DEBUG("[网络系统] 创建真实数据报连接: %s\n", url);
     
     // 创建UDP Socket
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
-        printf("[网络系统] 创建UDP Socket失败: %s\n", strerror(errno));
+        LOG_DEBUG("[网络系统] 创建UDP Socket失败: %s\n", strerror(errno));
         j2me_connection_close(connection);
         return NULL;
     }
@@ -968,19 +969,19 @@ j2me_connection_t* j2me_datagram_open(j2me_vm_t* vm, j2me_network_manager_t* man
         local_addr.sin_port = htons(connection->port);
         
         if (bind(sockfd, (struct sockaddr*)&local_addr, sizeof(local_addr)) < 0) {
-            printf("[网络系统] 绑定UDP Socket失败: %s\n", strerror(errno));
+            LOG_DEBUG("[网络系统] 绑定UDP Socket失败: %s\n", strerror(errno));
             close(sockfd);
             j2me_connection_close(connection);
             return NULL;
         }
         
-        printf("[网络系统] UDP Socket绑定到端口: %d\n", connection->port);
+        LOG_DEBUG("[网络系统] UDP Socket绑定到端口: %d\n", connection->port);
     }
     
     connection->socket_fd = sockfd;
     connection->state = CONNECTION_STATE_OPEN;
     
-    printf("[网络系统] 数据报连接创建成功: fd=%d\n", sockfd);
+    LOG_DEBUG("[网络系统] 数据报连接创建成功: fd=%d\n", sockfd);
     
     return connection;
 }
@@ -998,7 +999,7 @@ j2me_error_t j2me_datagram_send(j2me_connection_t* connection, const uint8_t* da
     // 解析目标主机
     struct hostent* server = gethostbyname(host);
     if (!server) {
-        printf("[网络系统] 解析主机名失败: %s\n", host);
+        LOG_DEBUG("[网络系统] 解析主机名失败: %s\n", host);
         return J2ME_ERROR_IO_EXCEPTION;
     }
     
@@ -1015,15 +1016,15 @@ j2me_error_t j2me_datagram_send(j2me_connection_t* connection, const uint8_t* da
     
     if (result < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            printf("[网络系统] UDP发送缓冲区满，稍后重试\n");
+            LOG_DEBUG("[网络系统] UDP发送缓冲区满，稍后重试\n");
             return J2ME_SUCCESS;
         } else {
-            printf("[网络系统] UDP发送失败: %s\n", strerror(errno));
+            LOG_DEBUG("[网络系统] UDP发送失败: %s\n", strerror(errno));
             return J2ME_ERROR_IO_EXCEPTION;
         }
     }
     
-    printf("[网络系统] 发送数据报: %zu bytes 到 %s:%d (实际发送: %zd)\n", 
+    LOG_DEBUG("[网络系统] 发送数据报: %zu bytes 到 %s:%d (实际发送: %zd)\n", 
            size, host, port, result);
     
     return J2ME_SUCCESS;
@@ -1069,7 +1070,7 @@ j2me_error_t j2me_datagram_receive(j2me_connection_t* connection, uint8_t* buffe
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return J2ME_SUCCESS; // 没有数据
         } else {
-            printf("[网络系统] UDP接收失败: %s\n", strerror(errno));
+            LOG_DEBUG("[网络系统] UDP接收失败: %s\n", strerror(errno));
             return J2ME_ERROR_IO_EXCEPTION;
         }
     }
@@ -1084,7 +1085,7 @@ j2me_error_t j2me_datagram_receive(j2me_connection_t* connection, uint8_t* buffe
         *sender_port = ntohs(sender_addr.sin_port);
     }
     
-    printf("[网络系统] 接收数据报: %zu bytes 来自 %s:%d\n", 
+    LOG_DEBUG("[网络系统] 接收数据报: %zu bytes 来自 %s:%d\n", 
            *bytes_received, inet_ntoa(sender_addr.sin_addr), ntohs(sender_addr.sin_port));
     
     return J2ME_SUCCESS;
@@ -1116,7 +1117,7 @@ const char* j2me_network_get_method_name(j2me_http_method_t method) {
 void j2me_network_set_timeout(j2me_network_manager_t* manager, int timeout_ms) {
     if (manager) {
         manager->timeout_ms = timeout_ms;
-        printf("[网络系统] 设置超时时间: %d ms\n", timeout_ms);
+        LOG_DEBUG("[网络系统] 设置超时时间: %d ms\n", timeout_ms);
     }
 }
 
@@ -1163,5 +1164,5 @@ void j2me_network_close_all(j2me_network_manager_t* manager) {
     
     manager->active_connections = 0;
     
-    printf("[网络系统] 所有连接已关闭\n");
+    LOG_DEBUG("[网络系统] 所有连接已关闭\n");
 }

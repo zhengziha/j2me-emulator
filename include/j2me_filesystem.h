@@ -3,6 +3,7 @@
 
 #include "j2me_types.h"
 #include "j2me_object.h"
+#include "j2me_log.h"
 #include <stdio.h>
 #include <sys/types.h>
 #include <pthread.h>

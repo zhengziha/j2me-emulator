@@ -82,3 +82,38 @@ endif()
 
 # 安装规则
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+
+
+# 简单解释器测试程序
+# 获取所有源文件但排除main.c
+file(GLOB_RECURSE TEST_SOURCES 
+    "src/*.cpp"
+    "src/*.c"
+)
+list(FILTER TEST_SOURCES EXCLUDE REGEX ".*test.*")
+list(FILTER TEST_SOURCES EXCLUDE REGEX ".*main.c$")
+
+add_executable(test_simple_interpreter 
+    test_simple_interpreter.c
+    ${TEST_SOURCES}
+)
+
+# 链接库
+target_link_libraries(test_simple_interpreter ${SDL2_LIBRARIES})
+target_link_libraries(test_simple_interpreter ${SDL2_MIXER_LIBRARIES})
+target_link_libraries(test_simple_interpreter ${SDL2_IMAGE_LIBRARIES})
+target_link_libraries(test_simple_interpreter ${SDL2_TTF_LIBRARIES})
+target_link_libraries(test_simple_interpreter ${LIBCURL_LIBRARIES})
+target_link_libraries(test_simple_interpreter ${ZLIB_LIBRARIES})
+target_link_directories(test_simple_interpreter PRIVATE ${SDL2_MIXER_LIBRARY_DIRS})
+target_link_directories(test_simple_interpreter PRIVATE ${SDL2_IMAGE_LIBRARY_DIRS})
+target_link_directories(test_simple_interpreter PRIVATE ${SDL2_TTF_LIBRARY_DIRS})
+target_link_directories(test_simple_interpreter PRIVATE ${LIBCURL_LIBRARY_DIRS})
+
+if(MATH_LIBRARY)
+    target_link_libraries(test_simple_interpreter ${MATH_LIBRARY})
+endif()
+
+if(APPLE)
+    target_link_libraries(test_simple_interpreter "-framework CoreFoundation")
+endif()

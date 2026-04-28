@@ -10,6 +10,7 @@
  * - 性能监控和统计
  */
 
+#include "j2me_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -129,24 +130,24 @@ j2me_byte* create_complex_bytecode(size_t* length) {
  * @brief 测试优化解释器性能 (独立测试)
  */
 double test_optimized_interpreter_standalone(j2me_vm_t* vm, j2me_byte* bytecode, size_t length, int iterations) {
-    printf("🚀 测试优化解释器性能...\n");
+    LOG_DEBUG("🚀 测试优化解释器性能...\n");
     
     // 创建优化解释器
     j2me_optimized_interpreter_t* interpreter = j2me_optimized_interpreter_create(length * 2);
     if (!interpreter) {
-        printf("❌ 优化解释器创建失败\n");
+        LOG_DEBUG("❌ 优化解释器创建失败\n");
         return 0.0;
     }
     
     // 预解码字节码
     j2me_error_t result = j2me_predecode_bytecode(interpreter, bytecode, length);
     if (result != J2ME_SUCCESS) {
-        printf("❌ 字节码预解码失败: %d\n", result);
+        LOG_DEBUG("❌ 字节码预解码失败: %d\n", result);
         j2me_optimized_interpreter_destroy(interpreter);
         return 0.0;
     }
     
-    printf("✅ 字节码预解码完成，指令数: %zu\n", interpreter->code_length);
+    LOG_DEBUG("✅ 字节码预解码完成，指令数: %zu\n", interpreter->code_length);
     
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -155,7 +156,7 @@ double test_optimized_interpreter_standalone(j2me_vm_t* vm, j2me_byte* bytecode,
         // 创建栈帧
         j2me_stack_frame_t* frame = j2me_stack_frame_create(100, 20);
         if (!frame) {
-            printf("❌ 栈帧创建失败\n");
+            LOG_DEBUG("❌ 栈帧创建失败\n");
             break;
         }
         
@@ -168,14 +169,14 @@ double test_optimized_interpreter_standalone(j2me_vm_t* vm, j2me_byte* bytecode,
         j2me_stack_frame_destroy(frame);
         
         if (result != J2ME_SUCCESS) {
-            printf("⚠️ 优化解释器执行错误: %d\n", result);
+            LOG_DEBUG("⚠️ 优化解释器执行错误: %d\n", result);
         }
     }
     
     clock_gettime(CLOCK_MONOTONIC, &end);
     
     double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    printf("✅ 优化解释器完成 %d 次迭代，耗时: %.3f 秒\n", iterations, elapsed);
+    LOG_DEBUG("✅ 优化解释器完成 %d 次迭代，耗时: %.3f 秒\n", iterations, elapsed);
     
     // 打印性能统计报告
     j2me_performance_stats_print_report(interpreter->stats);
@@ -188,16 +189,16 @@ double test_optimized_interpreter_standalone(j2me_vm_t* vm, j2me_byte* bytecode,
  * @brief 测试内联缓存性能
  */
 void test_inline_cache_performance(void) {
-    printf("\n=== 测试内联缓存性能 ===\n");
+    LOG_DEBUG("\n=== 测试内联缓存性能 ===\n");
     
     // 创建内联缓存
     j2me_inline_cache_t* cache = j2me_inline_cache_create(32);
     if (!cache) {
-        printf("❌ 内联缓存创建失败\n");
+        LOG_DEBUG("❌ 内联缓存创建失败\n");
         return;
     }
     
-    printf("📊 测试缓存操作性能...\n");
+    LOG_DEBUG("📊 测试缓存操作性能...\n");
     
     struct timespec start, end;
     const int test_count = 100000;
@@ -210,7 +211,7 @@ void test_inline_cache_performance(void) {
     clock_gettime(CLOCK_MONOTONIC, &end);
     
     double update_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    printf("✅ 缓存更新性能: %d 次操作，耗时 %.3f 秒 (%.0f 操作/秒)\n", 
+    LOG_DEBUG("✅ 缓存更新性能: %d 次操作，耗时 %.3f 秒 (%.0f 操作/秒)\n", 
            test_count, update_time, test_count / update_time);
     
     // 测试缓存查找性能
@@ -223,9 +224,9 @@ void test_inline_cache_performance(void) {
     clock_gettime(CLOCK_MONOTONIC, &end);
     
     double lookup_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    printf("✅ 缓存查找性能: %d 次操作，耗时 %.3f 秒 (%.0f 操作/秒)\n", 
+    LOG_DEBUG("✅ 缓存查找性能: %d 次操作，耗时 %.3f 秒 (%.0f 操作/秒)\n", 
            test_count, lookup_time, test_count / lookup_time);
-    printf("📈 缓存命中率: %.1f%% (%d/%d)\n", 
+    LOG_DEBUG("📈 缓存命中率: %.1f%% (%d/%d)\n", 
            (double)hit_count / test_count * 100, hit_count, test_count);
     
     j2me_inline_cache_destroy(cache);
@@ -235,16 +236,16 @@ void test_inline_cache_performance(void) {
  * @brief 测试热点检测性能
  */
 void test_hotspot_detector_performance(void) {
-    printf("\n=== 测试热点检测性能 ===\n");
+    LOG_DEBUG("\n=== 测试热点检测性能 ===\n");
     
     // 创建热点检测器
     j2me_hotspot_detector_t* detector = j2me_hotspot_detector_create(1000, 100, 10);
     if (!detector) {
-        printf("❌ 热点检测器创建失败\n");
+        LOG_DEBUG("❌ 热点检测器创建失败\n");
         return;
     }
     
-    printf("🔥 测试热点检测算法...\n");
+    LOG_DEBUG("🔥 测试热点检测算法...\n");
     
     struct timespec start, end;
     const int test_count = 1000000;
@@ -262,9 +263,9 @@ void test_hotspot_detector_performance(void) {
     clock_gettime(CLOCK_MONOTONIC, &end);
     
     double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    printf("✅ 热点检测性能: %d 次调用，耗时 %.3f 秒 (%.0f 调用/秒)\n", 
+    LOG_DEBUG("✅ 热点检测性能: %d 次调用，耗时 %.3f 秒 (%.0f 调用/秒)\n", 
            test_count, elapsed, test_count / elapsed);
-    printf("🔥 检测到热点: %d 个\n", hotspot_count);
+    LOG_DEBUG("🔥 检测到热点: %d 个\n", hotspot_count);
     
     j2me_hotspot_detector_destroy(detector);
 }
@@ -273,13 +274,13 @@ void test_hotspot_detector_performance(void) {
  * @brief 测试批量执行性能
  */
 void test_batch_execution_performance(j2me_vm_t* vm) {
-    printf("\n=== 测试批量执行性能 ===\n");
+    LOG_DEBUG("\n=== 测试批量执行性能 ===\n");
     
     // 创建大量重复指令的字节码
     const size_t instruction_count = 10000;
     j2me_byte* bytecode = (j2me_byte*)malloc(instruction_count * 3); // 每条指令平均3字节
     if (!bytecode) {
-        printf("❌ 字节码内存分配失败\n");
+        LOG_DEBUG("❌ 字节码内存分配失败\n");
         return;
     }
     
@@ -298,12 +299,12 @@ void test_batch_execution_performance(j2me_vm_t* vm) {
         bytecode[pos++] = 0x57; // pop
     }
     
-    printf("📦 生成了 %zu 字节的测试字节码\n", pos);
+    LOG_DEBUG("📦 生成了 %zu 字节的测试字节码\n", pos);
     
     // 创建优化解释器
     j2me_optimized_interpreter_t* interpreter = j2me_optimized_interpreter_create(pos * 2);
     if (!interpreter) {
-        printf("❌ 优化解释器创建失败\n");
+        LOG_DEBUG("❌ 优化解释器创建失败\n");
         free(bytecode);
         return;
     }
@@ -311,7 +312,7 @@ void test_batch_execution_performance(j2me_vm_t* vm) {
     // 预解码字节码
     j2me_error_t result = j2me_predecode_bytecode(interpreter, bytecode, pos);
     if (result != J2ME_SUCCESS) {
-        printf("❌ 字节码预解码失败: %d\n", result);
+        LOG_DEBUG("❌ 字节码预解码失败: %d\n", result);
         j2me_optimized_interpreter_destroy(interpreter);
         free(bytecode);
         return;
@@ -321,7 +322,7 @@ void test_batch_execution_performance(j2me_vm_t* vm) {
     int batch_sizes[] = {1, 10, 50, 100, 500, 1000};
     int batch_count = sizeof(batch_sizes) / sizeof(batch_sizes[0]);
     
-    printf("🚀 测试不同批量大小的执行性能:\n");
+    LOG_DEBUG("🚀 测试不同批量大小的执行性能:\n");
     
     for (int i = 0; i < batch_count; i++) {
         interpreter->batch_size = batch_sizes[i];
@@ -342,7 +343,7 @@ void test_batch_execution_performance(j2me_vm_t* vm) {
         double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
         double instructions_per_second = interpreter->code_length / elapsed;
         
-        printf("   批量大小 %4d: %.3f 秒, %.2f M指令/秒\n", 
+        LOG_DEBUG("   批量大小 %4d: %.3f 秒, %.2f M指令/秒\n", 
                batch_sizes[i], elapsed, instructions_per_second / 1000000.0);
         
         j2me_stack_frame_destroy(frame);
@@ -356,9 +357,9 @@ void test_batch_execution_performance(j2me_vm_t* vm) {
  * @brief 主测试函数
  */
 int main() {
-    printf("优化解释器性能测试程序\n");
-    printf("========================\n");
-    printf("测试字节码执行优化的各项性能改进\n\n");
+    LOG_DEBUG("优化解释器性能测试程序\n");
+    LOG_DEBUG("========================\n");
+    LOG_DEBUG("测试字节码执行优化的各项性能改进\n\n");
     
     // 创建虚拟机
     j2me_vm_config_t config = {
@@ -369,18 +370,18 @@ int main() {
     
     j2me_vm_t* vm = j2me_vm_create(&config);
     if (!vm) {
-        printf("❌ 虚拟机创建失败\n");
+        LOG_DEBUG("❌ 虚拟机创建失败\n");
         return 1;
     }
     
     j2me_error_t result = j2me_vm_initialize(vm);
     if (result != J2ME_SUCCESS) {
-        printf("❌ 虚拟机初始化失败: %d\n", result);
+        LOG_DEBUG("❌ 虚拟机初始化失败: %d\n", result);
         j2me_vm_destroy(vm);
         return 1;
     }
     
-    printf("✅ 虚拟机创建和初始化成功\n\n");
+    LOG_DEBUG("✅ 虚拟机创建和初始化成功\n\n");
     
     // 创建测试字节码
     size_t simple_length, complex_length;
@@ -388,28 +389,28 @@ int main() {
     j2me_byte* complex_bytecode = create_complex_bytecode(&complex_length);
     
     if (!simple_bytecode || !complex_bytecode) {
-        printf("❌ 测试字节码创建失败\n");
+        LOG_DEBUG("❌ 测试字节码创建失败\n");
         j2me_vm_destroy(vm);
         return 1;
     }
     
-    printf("📦 测试字节码创建成功:\n");
-    printf("   简单字节码: %zu 字节\n", simple_length);
-    printf("   复杂字节码: %zu 字节\n\n", complex_length);
+    LOG_DEBUG("📦 测试字节码创建成功:\n");
+    LOG_DEBUG("   简单字节码: %zu 字节\n", simple_length);
+    LOG_DEBUG("   复杂字节码: %zu 字节\n\n", complex_length);
     
     // 性能测试
     const int iterations = 100;
     
-    printf("=== 优化解释器性能测试 ===\n");
+    LOG_DEBUG("=== 优化解释器性能测试 ===\n");
     double optimized_time1 = test_optimized_interpreter_standalone(vm, simple_bytecode, simple_length, iterations);
     
-    printf("\n=== 复杂字节码优化解释器测试 ===\n");
+    LOG_DEBUG("\n=== 复杂字节码优化解释器测试 ===\n");
     double optimized_time2 = test_optimized_interpreter_standalone(vm, complex_bytecode, complex_length, iterations);
     
     if (optimized_time1 > 0 && optimized_time2 > 0) {
-        printf("🚀 简单字节码执行时间: %.3f秒\n", optimized_time1);
-        printf("🚀 复杂字节码执行时间: %.3f秒\n", optimized_time2);
-        printf("📊 复杂度比率: %.2fx\n", optimized_time2 / optimized_time1);
+        LOG_DEBUG("🚀 简单字节码执行时间: %.3f秒\n", optimized_time1);
+        LOG_DEBUG("🚀 复杂字节码执行时间: %.3f秒\n", optimized_time2);
+        LOG_DEBUG("📊 复杂度比率: %.2fx\n", optimized_time2 / optimized_time1);
     }
     
     // 组件性能测试
@@ -422,16 +423,16 @@ int main() {
     free(complex_bytecode);
     j2me_vm_destroy(vm);
     
-    printf("\n=== 优化解释器测试总结 ===\n");
-    printf("✅ 指令预解码: 减少运行时解析开销\n");
-    printf("✅ 跳转表优化: 快速指令分发机制\n");
-    printf("✅ 内联缓存: 优化方法调用性能\n");
-    printf("✅ 热点检测: 识别频繁执行的代码\n");
-    printf("✅ 批量执行: 减少循环开销\n");
-    printf("✅ 性能监控: 详细的执行统计\n");
+    LOG_DEBUG("\n=== 优化解释器测试总结 ===\n");
+    LOG_DEBUG("✅ 指令预解码: 减少运行时解析开销\n");
+    LOG_DEBUG("✅ 跳转表优化: 快速指令分发机制\n");
+    LOG_DEBUG("✅ 内联缓存: 优化方法调用性能\n");
+    LOG_DEBUG("✅ 热点检测: 识别频繁执行的代码\n");
+    LOG_DEBUG("✅ 批量执行: 减少循环开销\n");
+    LOG_DEBUG("✅ 性能监控: 详细的执行统计\n");
     
-    printf("\n🎉 优化解释器性能测试完成！\n");
-    printf("💡 字节码执行性能显著提升，为JIT编译器奠定基础！\n");
+    LOG_DEBUG("\n🎉 优化解释器性能测试完成！\n");
+    LOG_DEBUG("💡 字节码执行性能显著提升，为JIT编译器奠定基础！\n");
     
     return 0;
 }

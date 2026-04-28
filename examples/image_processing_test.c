@@ -5,6 +5,7 @@
  * 测试PNG/JPEG图像加载、绘制和MIDP Image API
  */
 
+#include "j2me_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +19,7 @@
  * @brief 创建测试图像文件
  */
 void create_test_images(void) {
-    printf("\n=== 创建测试图像文件 ===\n");
+    LOG_DEBUG("\n=== 创建测试图像文件 ===\n");
     
     // 创建一个简单的PPM图像文件用于测试
     FILE* file = fopen("test_image.ppm", "w");
@@ -40,9 +41,9 @@ void create_test_images(void) {
         }
         
         fclose(file);
-        printf("✅ 创建测试图像: test_image.ppm (64x64)\n");
+        LOG_DEBUG("✅ 创建测试图像: test_image.ppm (64x64)\n");
     } else {
-        printf("❌ 无法创建测试图像文件\n");
+        LOG_DEBUG("❌ 无法创建测试图像文件\n");
     }
     
     // 创建一个简单的BMP图像文件
@@ -80,9 +81,9 @@ void create_test_images(void) {
         }
         
         fclose(file);
-        printf("✅ 创建测试图像: test_pattern.bmp (32x32)\n");
+        LOG_DEBUG("✅ 创建测试图像: test_pattern.bmp (32x32)\n");
     } else {
-        printf("❌ 无法创建BMP测试图像文件\n");
+        LOG_DEBUG("❌ 无法创建BMP测试图像文件\n");
     }
 }
 
@@ -90,20 +91,20 @@ void create_test_images(void) {
  * @brief 测试图像创建功能
  */
 void test_image_creation(j2me_vm_t* vm) {
-    printf("\n=== 测试图像创建功能 ===\n");
+    LOG_DEBUG("\n=== 测试图像创建功能 ===\n");
     
     if (!vm->display || !vm->display->context) {
-        printf("❌ 图形上下文未初始化\n");
+        LOG_DEBUG("❌ 图形上下文未初始化\n");
         return;
     }
     
     j2me_graphics_context_t* context = vm->display->context;
     
     // 测试创建可变图像
-    printf("🖼️ 创建可变图像...\n");
+    LOG_DEBUG("🖼️ 创建可变图像...\n");
     j2me_image_t* mutable_image = j2me_image_create(context, 80, 60);
     if (mutable_image) {
-        printf("✅ 可变图像创建成功: %dx%d, 可变=%s\n", 
+        LOG_DEBUG("✅ 可变图像创建成功: %dx%d, 可变=%s\n", 
                mutable_image->width, mutable_image->height, 
                mutable_image->mutable ? "是" : "否");
         
@@ -118,23 +119,23 @@ void test_image_creation(j2me_vm_t* vm) {
         SDL_RenderFillRect(context->renderer, &rect);
         
         SDL_SetRenderTarget(context->renderer, NULL);
-        printf("✅ 在可变图像上绘制完成\n");
+        LOG_DEBUG("✅ 在可变图像上绘制完成\n");
     } else {
-        printf("❌ 可变图像创建失败\n");
+        LOG_DEBUG("❌ 可变图像创建失败\n");
     }
     
     // 测试从文件加载图像
-    printf("🖼️ 从文件加载图像...\n");
+    LOG_DEBUG("🖼️ 从文件加载图像...\n");
     j2me_image_t* loaded_image1 = j2me_image_load(context, "test_image.ppm");
     if (loaded_image1) {
-        printf("✅ PPM图像加载成功: %dx%d, 可变=%s\n", 
+        LOG_DEBUG("✅ PPM图像加载成功: %dx%d, 可变=%s\n", 
                loaded_image1->width, loaded_image1->height,
                loaded_image1->mutable ? "是" : "否");
     }
     
     j2me_image_t* loaded_image2 = j2me_image_load(context, "test_pattern.bmp");
     if (loaded_image2) {
-        printf("✅ BMP图像加载成功: %dx%d, 可变=%s\n", 
+        LOG_DEBUG("✅ BMP图像加载成功: %dx%d, 可变=%s\n", 
                loaded_image2->width, loaded_image2->height,
                loaded_image2->mutable ? "是" : "否");
     }
@@ -142,12 +143,12 @@ void test_image_creation(j2me_vm_t* vm) {
     // 测试加载不存在的文件
     j2me_image_t* missing_image = j2me_image_load(context, "nonexistent.png");
     if (missing_image) {
-        printf("✅ 不存在文件的占位符图像创建成功: %dx%d\n", 
+        LOG_DEBUG("✅ 不存在文件的占位符图像创建成功: %dx%d\n", 
                missing_image->width, missing_image->height);
     }
     
     // 绘制所有图像到屏幕
-    printf("🎨 绘制图像到屏幕...\n");
+    LOG_DEBUG("🎨 绘制图像到屏幕...\n");
     j2me_graphics_clear(context);
     
     if (mutable_image) {
@@ -171,26 +172,26 @@ void test_image_creation(j2me_vm_t* vm) {
     if (loaded_image2) j2me_image_destroy(loaded_image2);
     if (missing_image) j2me_image_destroy(missing_image);
     
-    printf("✅ 图像创建功能测试完成\n");
+    LOG_DEBUG("✅ 图像创建功能测试完成\n");
 }
 
 /**
  * @brief 测试MIDP Image本地方法
  */
 void test_midp_image_methods(j2me_vm_t* vm) {
-    printf("\n=== 测试MIDP Image本地方法 ===\n");
+    LOG_DEBUG("\n=== 测试MIDP Image本地方法 ===\n");
     
     // 创建测试栈帧
     j2me_stack_frame_t* frame = j2me_stack_frame_create(20, 10);
     if (!frame) {
-        printf("❌ 创建栈帧失败\n");
+        LOG_DEBUG("❌ 创建栈帧失败\n");
         return;
     }
     
-    printf("✅ 测试栈帧创建成功\n");
+    LOG_DEBUG("✅ 测试栈帧创建成功\n");
     
     // 测试Image.createImage(int, int)
-    printf("\n--- 测试Image.createImage(int, int) ---\n");
+    LOG_DEBUG("\n--- 测试Image.createImage(int, int) ---\n");
     j2me_operand_stack_push(&frame->operand_stack, 100); // width
     j2me_operand_stack_push(&frame->operand_stack, 80);  // height
     
@@ -198,43 +199,43 @@ void test_midp_image_methods(j2me_vm_t* vm) {
     if (result == J2ME_SUCCESS) {
         j2me_int image_ref;
         j2me_operand_stack_pop(&frame->operand_stack, &image_ref);
-        printf("✅ Image.createImage(100, 80) 调用成功，返回: 0x%x\n", image_ref);
+        LOG_DEBUG("✅ Image.createImage(100, 80) 调用成功，返回: 0x%x\n", image_ref);
         
         // 测试Image.getWidth()
-        printf("\n--- 测试Image.getWidth() ---\n");
+        LOG_DEBUG("\n--- 测试Image.getWidth() ---\n");
         j2me_operand_stack_push(&frame->operand_stack, image_ref);
         result = midp_image_get_width(vm, frame, NULL);
         if (result == J2ME_SUCCESS) {
             j2me_int width;
             j2me_operand_stack_pop(&frame->operand_stack, &width);
-            printf("✅ Image.getWidth() 调用成功，返回宽度: %d\n", width);
+            LOG_DEBUG("✅ Image.getWidth() 调用成功，返回宽度: %d\n", width);
         }
         
         // 测试Image.getHeight()
-        printf("\n--- 测试Image.getHeight() ---\n");
+        LOG_DEBUG("\n--- 测试Image.getHeight() ---\n");
         j2me_operand_stack_push(&frame->operand_stack, image_ref);
         result = midp_image_get_height(vm, frame, NULL);
         if (result == J2ME_SUCCESS) {
             j2me_int height;
             j2me_operand_stack_pop(&frame->operand_stack, &height);
-            printf("✅ Image.getHeight() 调用成功，返回高度: %d\n", height);
+            LOG_DEBUG("✅ Image.getHeight() 调用成功，返回高度: %d\n", height);
         }
     } else {
-        printf("❌ Image.createImage(int, int) 调用失败: %d\n", result);
+        LOG_DEBUG("❌ Image.createImage(int, int) 调用失败: %d\n", result);
     }
     
     // 测试Image.createImage(String)
-    printf("\n--- 测试Image.createImage(String) ---\n");
+    LOG_DEBUG("\n--- 测试Image.createImage(String) ---\n");
     j2me_operand_stack_push(&frame->operand_stack, 0x60000001); // 文件名字符串引用
     
     result = midp_image_create_image_from_file(vm, frame, NULL);
     if (result == J2ME_SUCCESS) {
         j2me_int image_ref;
         j2me_operand_stack_pop(&frame->operand_stack, &image_ref);
-        printf("✅ Image.createImage(String) 调用成功，返回: 0x%x\n", image_ref);
+        LOG_DEBUG("✅ Image.createImage(String) 调用成功，返回: 0x%x\n", image_ref);
         
         // 测试Graphics.drawImage()
-        printf("\n--- 测试Graphics.drawImage() ---\n");
+        LOG_DEBUG("\n--- 测试Graphics.drawImage() ---\n");
         j2me_operand_stack_push(&frame->operand_stack, 0x40000001); // Graphics对象引用
         j2me_operand_stack_push(&frame->operand_stack, image_ref);   // Image对象引用
         j2me_operand_stack_push(&frame->operand_stack, 50);         // x
@@ -243,27 +244,27 @@ void test_midp_image_methods(j2me_vm_t* vm) {
         
         result = midp_graphics_draw_image(vm, frame, NULL);
         if (result == J2ME_SUCCESS) {
-            printf("✅ Graphics.drawImage() 调用成功\n");
+            LOG_DEBUG("✅ Graphics.drawImage() 调用成功\n");
         } else {
-            printf("❌ Graphics.drawImage() 调用失败: %d\n", result);
+            LOG_DEBUG("❌ Graphics.drawImage() 调用失败: %d\n", result);
         }
     } else {
-        printf("❌ Image.createImage(String) 调用失败: %d\n", result);
+        LOG_DEBUG("❌ Image.createImage(String) 调用失败: %d\n", result);
     }
     
     // 清理栈帧
     j2me_stack_frame_destroy(frame);
-    printf("✅ MIDP Image本地方法测试完成\n");
+    LOG_DEBUG("✅ MIDP Image本地方法测试完成\n");
 }
 
 /**
  * @brief 测试图像锚点和变换
  */
 void test_image_anchors_and_transforms(j2me_vm_t* vm) {
-    printf("\n=== 测试图像锚点和变换 ===\n");
+    LOG_DEBUG("\n=== 测试图像锚点和变换 ===\n");
     
     if (!vm->display || !vm->display->context) {
-        printf("❌ 图形上下文未初始化\n");
+        LOG_DEBUG("❌ 图形上下文未初始化\n");
         return;
     }
     
@@ -272,7 +273,7 @@ void test_image_anchors_and_transforms(j2me_vm_t* vm) {
     // 创建测试图像
     j2me_image_t* test_image = j2me_image_create(context, 40, 30);
     if (!test_image) {
-        printf("❌ 创建测试图像失败\n");
+        LOG_DEBUG("❌ 创建测试图像失败\n");
         return;
     }
     
@@ -302,7 +303,7 @@ void test_image_anchors_and_transforms(j2me_vm_t* vm) {
     j2me_graphics_draw_line(context, 0, 160, 240, 160); // 水平线
     
     // 测试不同锚点
-    printf("🎯 测试不同锚点...\n");
+    LOG_DEBUG("🎯 测试不同锚点...\n");
     
     // TOP-LEFT (0x00)
     j2me_graphics_draw_image(context, test_image, 120, 160, 0x00);
@@ -330,17 +331,17 @@ void test_image_anchors_and_transforms(j2me_vm_t* vm) {
     // 清理
     j2me_image_destroy(test_image);
     
-    printf("✅ 图像锚点和变换测试完成\n");
+    LOG_DEBUG("✅ 图像锚点和变换测试完成\n");
 }
 
 /**
  * @brief 图像处理性能测试
  */
 void test_image_performance(j2me_vm_t* vm) {
-    printf("\n=== 图像处理性能测试 ===\n");
+    LOG_DEBUG("\n=== 图像处理性能测试 ===\n");
     
     if (!vm->display || !vm->display->context) {
-        printf("❌ 图形上下文未初始化\n");
+        LOG_DEBUG("❌ 图形上下文未初始化\n");
         return;
     }
     
@@ -350,7 +351,7 @@ void test_image_performance(j2me_vm_t* vm) {
     const int num_images = 10;
     j2me_image_t* images[num_images];
     
-    printf("🚀 创建 %d 个图像...\n", num_images);
+    LOG_DEBUG("🚀 创建 %d 个图像...\n", num_images);
     for (int i = 0; i < num_images; i++) {
         images[i] = j2me_image_create(context, 32, 32);
         if (images[i]) {
@@ -366,7 +367,7 @@ void test_image_performance(j2me_vm_t* vm) {
     }
     
     // 性能测试：快速绘制多个图像
-    printf("⚡ 性能测试：绘制动画...\n");
+    LOG_DEBUG("⚡ 性能测试：绘制动画...\n");
     
     for (int frame = 0; frame < 60; frame++) { // 60帧动画
         j2me_graphics_clear(context);
@@ -393,12 +394,12 @@ void test_image_performance(j2me_vm_t* vm) {
         usleep(33000); // ~30 FPS
         
         if (frame % 15 == 0) {
-            printf("⚡ 帧 %d/60\r", frame + 1);
+            LOG_DEBUG("⚡ 帧 %d/60\r", frame + 1);
             fflush(stdout);
         }
     }
     
-    printf("\n");
+    LOG_DEBUG("\n");
     
     // 清理图像
     for (int i = 0; i < num_images; i++) {
@@ -407,17 +408,17 @@ void test_image_performance(j2me_vm_t* vm) {
         }
     }
     
-    printf("✅ 图像处理性能测试完成\n");
+    LOG_DEBUG("✅ 图像处理性能测试完成\n");
 }
 
 /**
  * @brief 主测试函数
  */
 int main() {
-    printf("图像加载和处理测试程序\n");
-    printf("========================\n");
-    printf("测试PNG/JPEG图像加载、绘制和MIDP Image API\n");
-    printf("包括图像创建、文件加载、锚点、性能测试\n\n");
+    LOG_DEBUG("图像加载和处理测试程序\n");
+    LOG_DEBUG("========================\n");
+    LOG_DEBUG("测试PNG/JPEG图像加载、绘制和MIDP Image API\n");
+    LOG_DEBUG("包括图像创建、文件加载、锚点、性能测试\n\n");
     
     // 创建测试图像文件
     create_test_images();
@@ -432,39 +433,39 @@ int main() {
     // 创建虚拟机
     j2me_vm_t* vm = j2me_vm_create(&config);
     if (!vm) {
-        printf("❌ 创建虚拟机失败\n");
+        LOG_DEBUG("❌ 创建虚拟机失败\n");
         return 1;
     }
-    printf("✅ 虚拟机创建成功\n");
+    LOG_DEBUG("✅ 虚拟机创建成功\n");
     
     // 初始化虚拟机 (这将初始化SDL2显示系统和图像系统)
     j2me_error_t result = j2me_vm_initialize(vm);
     if (result != J2ME_SUCCESS) {
-        printf("❌ 虚拟机初始化失败: %d\n", result);
+        LOG_DEBUG("❌ 虚拟机初始化失败: %d\n", result);
         j2me_vm_destroy(vm);
         return 1;
     }
-    printf("✅ 虚拟机初始化成功\n");
+    LOG_DEBUG("✅ 虚拟机初始化成功\n");
     
     // 运行测试
     test_image_creation(vm);
     
-    printf("\n⏳ 等待5秒以查看图像创建结果...\n");
+    LOG_DEBUG("\n⏳ 等待5秒以查看图像创建结果...\n");
     sleep(5);
     
     test_midp_image_methods(vm);
     
-    printf("\n⏳ 等待3秒...\n");
+    LOG_DEBUG("\n⏳ 等待3秒...\n");
     sleep(3);
     
     test_image_anchors_and_transforms(vm);
     
-    printf("\n⏳ 等待5秒以查看锚点测试结果...\n");
+    LOG_DEBUG("\n⏳ 等待5秒以查看锚点测试结果...\n");
     sleep(5);
     
     test_image_performance(vm);
     
-    printf("\n⏳ 等待3秒以查看最终结果...\n");
+    LOG_DEBUG("\n⏳ 等待3秒以查看最终结果...\n");
     sleep(3);
     
     // 清理虚拟机
@@ -474,18 +475,18 @@ int main() {
     remove("test_image.ppm");
     remove("test_pattern.bmp");
     
-    printf("\n=== 图像加载和处理测试总结 ===\n");
-    printf("✅ 图像创建: 可变图像创建和内容绘制正常\n");
-    printf("✅ 文件加载: PPM/BMP图像文件加载正常\n");
-    printf("✅ 占位符处理: 不存在文件的占位符图像创建正常\n");
-    printf("✅ MIDP Image API: createImage、getWidth、getHeight方法正常\n");
-    printf("✅ Graphics.drawImage: 图像绘制方法正常\n");
-    printf("✅ 锚点系统: 不同锚点的图像定位正常\n");
-    printf("✅ 性能测试: 60帧动画流畅播放，多图像绘制正常\n");
-    printf("✅ 资源管理: 自动清理和释放正常\n");
+    LOG_DEBUG("\n=== 图像加载和处理测试总结 ===\n");
+    LOG_DEBUG("✅ 图像创建: 可变图像创建和内容绘制正常\n");
+    LOG_DEBUG("✅ 文件加载: PPM/BMP图像文件加载正常\n");
+    LOG_DEBUG("✅ 占位符处理: 不存在文件的占位符图像创建正常\n");
+    LOG_DEBUG("✅ MIDP Image API: createImage、getWidth、getHeight方法正常\n");
+    LOG_DEBUG("✅ Graphics.drawImage: 图像绘制方法正常\n");
+    LOG_DEBUG("✅ 锚点系统: 不同锚点的图像定位正常\n");
+    LOG_DEBUG("✅ 性能测试: 60帧动画流畅播放，多图像绘制正常\n");
+    LOG_DEBUG("✅ 资源管理: 自动清理和释放正常\n");
     
-    printf("\n🎉 图像加载和处理测试完成！\n");
-    printf("💡 下一步: 完善字体系统和完整游戏测试\n");
+    LOG_DEBUG("\n🎉 图像加载和处理测试完成！\n");
+    LOG_DEBUG("💡 下一步: 完善字体系统和完整游戏测试\n");
     
     return 0;
 }

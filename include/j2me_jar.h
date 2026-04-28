@@ -3,6 +3,7 @@
 
 #include "j2me_types.h"
 #include "j2me_object.h"
+#include "j2me_log.h"
 #include <stdio.h>
 #include <stdint.h>
 
@@ -236,6 +237,14 @@ j2me_midlet_t* j2me_midlet_suite_get_midlet(j2me_midlet_suite_t* suite, int inde
  * @return MIDlet指针
  */
 j2me_midlet_t* j2me_midlet_suite_find_midlet(j2me_midlet_suite_t* suite, const char* name);
+
+/**
+ * @brief 根据类名查找MIDlet
+ * @param suite MIDlet套件
+ * @param class_name MIDlet类名
+ * @return MIDlet指针
+ */
+j2me_midlet_t* j2me_midlet_suite_find_midlet_by_class(j2me_midlet_suite_t* suite, const char* class_name);
 
 // MIDlet生命周期管理
 

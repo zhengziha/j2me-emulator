@@ -40,6 +40,13 @@ typedef struct {
         j2me_long long_value;
         j2me_double double_value;
         j2me_object_t* object_ref;
+        struct {
+            j2me_int i;
+            j2me_float f;
+            j2me_long l;
+            j2me_double d;
+            j2me_object_t* r;
+        } data;
     };
 } j2me_value_t;
 

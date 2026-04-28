@@ -31,7 +31,7 @@ SDL_Surface* text_surface = TTF_RenderText_Blended(context->current_font.ttf_fon
 // 首先尝试UTF-8渲染（支持中文）
 SDL_Surface* text_surface = TTF_RenderUTF8_Blended(context->current_font.ttf_font, text, color);
 if (!text_surface) {
-    printf("[图形] UTF-8渲染失败，尝试普通渲染: %s\n", TTF_GetError());
+    LOG_DEBUG("[图形] UTF-8渲染失败，尝试普通渲染: %s\n", TTF_GetError());
     // 回退到普通文本渲染
     text_surface = TTF_RenderText_Blended(context->current_font.ttf_font, text, color);
 }

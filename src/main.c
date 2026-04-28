@@ -3,6 +3,8 @@
 #include "j2me_native_methods.h"
 #include "j2me_jar.h"
 #include "j2me_midlet_executor.h"
+#include "j2me_input.h"
+#include "j2me_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
@@ -22,11 +24,19 @@
 /**
  * @brief 处理SDL事件
  * @param running 运行状态指针
+ * @param input_manager 输入管理器
  */
-static void handle_events(bool* running) {
+static void handle_events(bool* running, j2me_input_manager_t* input_manager) {
     SDL_Event event;
     
     while (SDL_PollEvent(&event)) {
+        // 首先尝试将事件传递给输入系统处理
+        if (input_manager && j2me_input_handle_sdl_event(input_manager, &event)) {
+            // 输入系统已处理该事件
+            continue;
+        }
+        
+        // 处理其他事件
         switch (event.type) {
             case SDL_QUIT:
                 *running = false;
@@ -48,53 +58,34 @@ static void handle_events(bool* running) {
     }
 }
 
-/**
- * @brief 渲染测试图形
- * @param display 显示系统
- */
-static void render_test_graphics(j2me_display_t* display) {
-    if (!display || !display->context) {
-        return;
-    }
-    
-    j2me_graphics_context_t* ctx = display->context;
-    
-    // 清除画布
-    j2me_graphics_clear(ctx);
-    
-    // 绘制测试图形
-    j2me_color_t red = {255, 0, 0, 255};
-    j2me_color_t green = {0, 255, 0, 255};
-    j2me_color_t blue = {0, 0, 255, 255};
-    
-    // 绘制红色矩形
-    j2me_graphics_set_color(ctx, red);
-    j2me_graphics_draw_rect(ctx, 10, 10, 50, 30, true);
-    
-    // 绘制绿色线条
-    j2me_graphics_set_color(ctx, green);
-    j2me_graphics_draw_line(ctx, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-    j2me_graphics_draw_line(ctx, WINDOW_WIDTH, 0, 0, WINDOW_HEIGHT);
-    
-    // 绘制蓝色边框
-    j2me_graphics_set_color(ctx, blue);
-    j2me_graphics_draw_rect(ctx, 5, 5, WINDOW_WIDTH-10, WINDOW_HEIGHT-10, false);
-    
-    // 刷新显示
-    j2me_display_refresh(display);
-}
-
 int main(int argc, char* argv[]) {
+    // 设置日志级别为INFO（减少调试输出）
+    j2me_log_set_level(J2ME_LOG_LEVEL_INFO);
+    
     printf("=== J2ME模拟器启动 ===\n");
     
     // 检查命令行参数
     if (argc < 2) {
-        printf("用法: %s <JAR文件路径>\n", argv[0]);
-        printf("示例: %s test_jar/zxx-jtxy.jar\n", argv[0]);
+        printf("用法: %s <JAR文件路径> [选项]\n", argv[0]);
+        printf("选项:\n");
+        printf("  -v, --verbose    显示详细调试信息\n");
+        printf("  -q, --quiet      只显示错误信息\n");
+        printf("示例: %s test_jar/zxfml.jar\n", argv[0]);
         return 1;
     }
     
     const char* jar_path = argv[1];
+    
+    // 处理命令行选项
+    for (int i = 2; i < argc; i++) {
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+            j2me_log_set_level(J2ME_LOG_LEVEL_DEBUG);
+            printf("调试模式已启用\n");
+        } else if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
+            j2me_log_set_level(J2ME_LOG_LEVEL_ERROR);
+        }
+    }
+    
     printf("📦 加载JAR文件: %s\n", jar_path);
     
     // 初始化显示系统
@@ -105,18 +96,32 @@ int main(int argc, char* argv[]) {
     }
     
     // 创建图形上下文
-    j2me_graphics_context_t* graphics = j2me_graphics_create_context(display, WINDOW_WIDTH, WINDOW_HEIGHT);
-    if (!graphics) {
+    display->context = j2me_graphics_create_context(display, WINDOW_WIDTH, WINDOW_HEIGHT);
+    if (!display->context) {
         printf("错误: 图形上下文创建失败\n");
         j2me_display_destroy(display);
         return 1;
     }
+    printf("✅ 图形上下文创建成功\n");
     
-    // 创建虚拟机
+    // 创建虚拟机（使用Phase 1的堆系统）
     j2me_vm_config_t vm_config = j2me_vm_get_default_config();
+    vm_config.heap_size = 2 * 1024 * 1024;  // 2MB堆
+    
     j2me_vm_t* vm = j2me_vm_create(&vm_config);
     if (!vm) {
         printf("错误: 虚拟机创建失败\n");
+        j2me_display_destroy(display);
+        return 1;
+    }
+    
+    printf("✅ 虚拟机初始化完成\n");
+    
+    // 创建输入管理器
+    j2me_input_manager_t* input_manager = j2me_input_manager_create();
+    if (!input_manager) {
+        printf("错误: 输入管理器创建失败\n");
+        j2me_vm_destroy(vm);
         j2me_display_destroy(display);
         return 1;
     }
@@ -135,7 +140,7 @@ int main(int argc, char* argv[]) {
     printf("所有子系统初始化完成\n");
     
     // 加载JAR文件
-    printf("🎮 开始加载游戏...\n");
+    printf("🎮 加载游戏...\n");
     j2me_jar_file_t* jar_file = j2me_jar_open(jar_path);
     if (!jar_file) {
         printf("❌ JAR文件打开失败: %s\n", jar_path);
@@ -169,8 +174,6 @@ int main(int argc, char* argv[]) {
         j2me_error_t loader_result = j2me_class_loader_set_jar_file(vm->class_loader, jar_file);
         if (loader_result != J2ME_SUCCESS) {
             printf("❌ 设置JAR文件到类加载器失败: %d\n", loader_result);
-        } else {
-            printf("✅ JAR文件已设置到类加载器\n");
         }
     }
     
@@ -187,36 +190,16 @@ int main(int argc, char* argv[]) {
     // 启动第一个MIDlet
     j2me_midlet_t* midlet = suite->midlets[0];
     printf("🚀 启动游戏: %s\n", midlet->name ? midlet->name : "未知游戏");
+    printf("📦 MIDlet主类: %s\n", midlet->class_name ? midlet->class_name : "未知");
     
-    // 尝试加载主类以验证类加载器工作
-    if (vm->class_loader && midlet->class_name) {
-        printf("📚 尝试加载主类: %s\n", midlet->class_name);
-        j2me_class_t* main_class = j2me_class_loader_load_class(vm->class_loader, midlet->class_name);
-        if (main_class) {
-            printf("✅ 主类加载成功: %s\n", midlet->class_name);
-        } else {
-            printf("⚠️  主类加载失败，但继续运行: %s\n", midlet->class_name);
-        }
-        
-        // 尝试预加载一些可能的Canvas类以便后续paint方法查找
-        printf("📚 预加载可能的Canvas类...\n");
-        const char* possible_canvas_classes[] = {"a", "b", "c", "d", "e", NULL};
-        for (int i = 0; possible_canvas_classes[i] != NULL; i++) {
-            j2me_class_t* canvas_class = j2me_class_loader_load_class(vm->class_loader, possible_canvas_classes[i]);
-            if (canvas_class) {
-                printf("✅ 预加载类成功: %s (方法数: %d)\n", possible_canvas_classes[i], canvas_class->methods_count);
-                
-                // 检查是否有paint方法
-                j2me_method_t* paint_method = j2me_class_find_method(canvas_class, "paint", NULL);
-                if (paint_method) {
-                    printf("🎨 发现paint方法: %s.paint (字节码长度: %d)\n", 
-                           possible_canvas_classes[i], paint_method->bytecode_length);
-                }
-            }
-        }
-    }
+    printf("🚀 启动游戏（这可能需要几秒钟）...\n");
+    fflush(stdout);
     
     vm_result = j2me_midlet_start(vm, midlet);
+    
+    printf("📍 j2me_midlet_start 返回: %d\n", vm_result);
+    fflush(stdout);
+    
     if (vm_result != J2ME_SUCCESS) {
         printf("❌ 游戏启动失败: %d\n", vm_result);
         j2me_jar_close(jar_file);
@@ -226,103 +209,74 @@ int main(int argc, char* argv[]) {
     }
     
     printf("✅ 游戏启动成功！\n");
-    printf("🎮 控制说明: ESC键退出游戏\n\n");
+    printf("🎮 按ESC键退出\n\n");
     
     // 主循环
     bool running = true;
     uint32_t last_time = SDL_GetTicks();
+    uint32_t start_time = SDL_GetTicks();
     const uint32_t frame_time = 1000 / 60; // 60 FPS
+    int frame_counter = 0;
     
-    printf("🎮 进入主循环，开始持续执行游戏逻辑...\n");
+    printf("进入主循环...\n");
     
     while (running) {
         uint32_t current_time = SDL_GetTicks();
         uint32_t delta_time = current_time - last_time;
+        uint32_t elapsed_time = current_time - start_time;
+        
+        // 每5秒输出一次状态
+        if (frame_counter % 300 == 0) {
+            printf("🎮 游戏运行中... 帧数: %d, 运行时间: %.1f秒, 线程数: %zu\n", 
+                   frame_counter, elapsed_time / 1000.0, vm->thread_count);
+            fflush(stdout);
+        }
         
         // 处理事件
-        handle_events(&running);
+        handle_events(&running, input_manager);
         
-        // 执行虚拟机时间片
-        if (delta_time >= frame_time) {
-            j2me_vm_execute_time_slice(vm, delta_time);
+        // 每帧都执行，不要等待frame_time
+        j2me_vm_execute_time_slice(vm, delta_time);
+        
+        // 处理虚拟机事件（包括Canvas重绘）
+        j2me_vm_handle_events(vm);
+        
+        // 执行所有活动线程（包括游戏线程）
+        j2me_vm_execute_all_threads(vm, 1000);
+        
+        // 触发Canvas重绘（如果有活动的Canvas）
+        if (vm->state == J2ME_VM_RUNNING && vm->current_canvas_ref != 0) {
+            // 使用真实的堆对象引用触发重绘
+            static int repaint_counter = 0;
+            repaint_counter++;
             
-            // 处理虚拟机事件（包括Canvas重绘）
-            j2me_vm_handle_events(vm);
-            
-            // 如果游戏有线程在运行，继续执行更多指令
-            if (vm->current_thread && vm->current_thread->is_running) {
-                // 尝试调用游戏的主循环方法来推进游戏逻辑
-                // 查找并调用可能的游戏循环方法
-                if (vm->class_loader) {
-                    j2me_class_t* xmidlet_class = j2me_class_loader_find_class(vm->class_loader, "XMIDlet");
-                    if (xmidlet_class) {
-                        // 尝试调用run方法 (如果实现了Runnable接口)
-                        j2me_method_t* run_method = j2me_class_find_method(xmidlet_class, "run", "()V");
-                        if (run_method) {
-                            printf("🎮 调用XMIDlet.run()方法推进游戏逻辑\n");
-                            j2me_error_t exec_result = j2me_interpreter_execute_method(vm, run_method, NULL, NULL);
-                            if (exec_result != J2ME_SUCCESS) {
-                                printf("⚠️  XMIDlet.run()执行失败: %d\n", exec_result);
-                            }
-                        }
-                        
-                        // 尝试调用其他可能的游戏循环方法
-                        const char* possible_methods[] = {"a", "b", "c", "d", "e", "f", NULL};
-                        for (int i = 0; possible_methods[i] != NULL; i++) {
-                            j2me_method_t* method = j2me_class_find_method(xmidlet_class, possible_methods[i], "()V");
-                            if (method && method->bytecode_length > 10) { // 只调用有实际逻辑的方法
-                                printf("🎮 调用XMIDlet.%s()方法\n", possible_methods[i]);
-                                j2me_error_t exec_result = j2me_interpreter_execute_method(vm, method, NULL, NULL);
-                                if (exec_result != J2ME_SUCCESS) {
-                                    printf("⚠️  XMIDlet.%s()执行失败: %d\n", possible_methods[i], exec_result);
-                                }
-                                break; // 只调用一个方法，避免过度执行
-                            }
-                        }
-                    }
-                }
+            // 每30帧触发一次重绘（约2 FPS），降低频率避免崩溃
+            if (repaint_counter % 30 == 0) {
+                printf("[主循环] 触发Canvas重绘 (Canvas=0x%x)\n", vm->current_canvas_ref);
                 
-                // 继续执行当前线程的指令
-                if (vm->current_thread->current_frame) {
-                    j2me_error_t exec_result = j2me_interpreter_execute_batch(vm, vm->current_thread, 500);
-                    if (exec_result != J2ME_SUCCESS && exec_result != J2ME_SUCCESS) {
-                        printf("⚠️  游戏逻辑执行遇到问题: %d\n", exec_result);
-                    }
-                }
-            }
-            
-            // 触发Canvas重绘（如果有活动的MIDlet）
-            if (vm->state == J2ME_VM_RUNNING && vm->current_canvas_ref != 0) {
-                // 使用真实的Canvas对象引用并触发重绘
                 j2me_stack_frame_t* frame = j2me_stack_frame_create(10, 5);
                 if (frame) {
+                    // 压入Canvas对象引用
                     j2me_operand_stack_push(&frame->operand_stack, vm->current_canvas_ref);
                     
-                    // 调用repaint方法来更新显示
-                    midp_canvas_repaint(vm, frame, NULL);
+                    // 调用Canvas.repaint()
+                    j2me_error_t result = midp_canvas_repaint(vm, frame, NULL);
+                    if (result != J2ME_SUCCESS) {
+                        printf("[主循环] Canvas.repaint()失败: %d\n", result);
+                    }
                     
                     j2me_stack_frame_destroy(frame);
                 }
-                
-                // 每隔几帧也调用一次serviceRepaints
-                static int service_counter = 0;
-                service_counter++;
-                if (service_counter % 5 == 0) { // 每5帧调用一次
-                    j2me_stack_frame_t* service_frame = j2me_stack_frame_create(10, 5);
-                    if (service_frame) {
-                        j2me_operand_stack_push(&service_frame->operand_stack, vm->current_canvas_ref);
-                        
-                        midp_canvas_service_repaints(vm, service_frame, NULL);
-                        
-                        j2me_stack_frame_destroy(service_frame);
-                    }
-                }
             }
-            
-            last_time = current_time;
         }
         
-        // 避免CPU占用过高
+        // 更新时间和帧计数
+        if (delta_time >= frame_time) {
+            last_time = current_time;
+        }
+        frame_counter++;
+        
+        // 控制帧率
         SDL_Delay(1);
     }
     
@@ -340,6 +294,7 @@ int main(int argc, char* argv[]) {
     }
     
     // 清理资源 - 注意：j2me_vm_destroy会自动清理display，所以不需要单独清理
+    j2me_input_manager_destroy(input_manager);
     j2me_vm_destroy(vm);
     // j2me_display_destroy(display); // 已经在j2me_vm_destroy中清理了
     

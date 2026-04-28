@@ -97,6 +97,15 @@ j2me_error_t j2me_native_method_invoke(j2me_vm_t* vm,
  */
 j2me_error_t j2me_midp_native_methods_init(j2me_vm_t* vm);
 
+/**
+ * @brief 调用Canvas对象的paint方法
+ * @param vm 虚拟机实例
+ * @param canvas_ref Canvas对象引用
+ * @param graphics_ref Graphics对象引用
+ * @return 错误码
+ */
+j2me_error_t call_canvas_paint_method(j2me_vm_t* vm, j2me_int canvas_ref, j2me_int graphics_ref);
+
 // MIDP Display类本地方法
 j2me_error_t midp_display_get_display(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t midp_display_set_current(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
@@ -119,6 +128,19 @@ j2me_error_t midp_graphics_draw_string(j2me_vm_t* vm, j2me_stack_frame_t* frame,
 j2me_error_t midp_graphics_draw_oval(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t midp_graphics_fill_oval(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t midp_graphics_draw_arc(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_draw_round_rect(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_fill_round_rect(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_fill_arc(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_fill_triangle(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_draw_rgb(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_graphics_get_display_color(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// MIDP Font类本地方法
+j2me_error_t midp_font_char_width(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_font_chars_width(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_font_string_width(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_font_substring_width(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_font_init(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 
 // MIDP Canvas事件处理本地方法
 j2me_error_t midp_canvas_key_pressed(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
@@ -133,5 +155,63 @@ j2me_error_t midp_image_create_image_from_file(j2me_vm_t* vm, j2me_stack_frame_t
 j2me_error_t midp_image_get_width(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t midp_image_get_height(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 j2me_error_t midp_graphics_draw_image(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// MIDP MIDlet类本地方法
+j2me_error_t midp_midlet_platform_request(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_midlet_destroy_app(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t midp_midlet_notify_destroyed(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java String类本地方法 (基础)
+j2me_error_t java_string_length(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_string_char_at(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_string_substring(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java Thread类本地方法
+j2me_error_t java_thread_start(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_thread_sleep(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_thread_yield(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_thread_current_thread(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java Object类本地方法
+j2me_error_t java_object_get_class(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_object_hash_code(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_object_notify(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_object_notify_all(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_object_wait(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java System类本地方法
+j2me_error_t java_system_out_println(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_system_out_print(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_system_current_time_millis(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_system_arraycopy(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_system_identity_hash_code(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_system_get_property0(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java String类本地方法
+j2me_error_t java_string_equals(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_string_hash_code(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_string_index_of(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_string_index_of_from(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_string_last_index_of(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_string_last_index_of_from(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_string_intern(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java Math类本地方法
+j2me_error_t java_math_sin(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_math_cos(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_math_tan(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_math_sqrt(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_math_ceil(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_math_floor(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java Runtime类本地方法
+j2me_error_t java_runtime_gc(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_runtime_free_memory(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_runtime_total_memory(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_runtime_exit_internal(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+
+// Java Throwable类本地方法
+j2me_error_t java_throwable_print_stack_trace(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
+j2me_error_t java_throwable_fill_in_stack_trace(j2me_vm_t* vm, j2me_stack_frame_t* frame, void* args);
 
 #endif // J2ME_NATIVE_METHODS_H

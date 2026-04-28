@@ -50,6 +50,13 @@ struct j2me_thread {
     uint32_t thread_id;                 // 线程ID
     bool is_running;                    // 是否运行中
     j2me_exception_t* current_exception; // 当前异常
+    
+    // Java Thread对象支持
+    void* thread_object;                // 对应的Java Thread对象
+    void* runnable_object;              // Runnable对象（如果有）
+    void* run_method;                   // run()方法
+    bool is_daemon;                     // 是否为守护线程
+    int priority;                       // 线程优先级
 };
 
 /**
