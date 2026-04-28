@@ -13,7 +13,7 @@ mkdir -p classes
 
 # 编译（使用Java 8兼容模式，不验证MIDP API）
 echo "编译Java源文件..."
-javac -source 1.8 -target 1.8 -bootclasspath "" -extdirs "" -d classes SimpleMIDlet.java 2>&1 | grep -v "warning: \[options\]" || true
+javac -source 1.8 -target 1.8 -cp stubs -d classes SimpleMIDlet.java 2>&1
 
 if [ $? -ne 0 ]; then
     echo "❌ 编译失败"

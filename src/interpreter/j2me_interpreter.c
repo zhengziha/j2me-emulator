@@ -999,14 +999,12 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                         result = j2me_operand_stack_push(&frame->operand_stack, field_value.int_value);
                         LOG_DEBUG("[解释器] getstatic: 获取静态字段值 0x%x\n", field_value.int_value);
                     } else {
-                        LOG_DEBUG("[解释器] getstatic: 字段访问失败: %d，使用null\n", field_result);
-                        j2me_int default_value = 0; // 返回null而不是假引用
-                        result = j2me_operand_stack_push(&frame->operand_stack, default_value);
+                        LOG_DEBUG("[解释器] getstatic: 字段访问失败: %d\n", field_result);
+                        result = j2me_operand_stack_push(&frame->operand_stack, 0);
                     }
                 } else {
-                    LOG_DEBUG("[解释器] getstatic: 无法获取类信息，使用null\n");
-                    j2me_int default_value = 0; // 返回null而不是假引用
-                    result = j2me_operand_stack_push(&frame->operand_stack, default_value);
+                    LOG_DEBUG("[解释器] getstatic: 无法获取类信息\n");
+                    result = j2me_operand_stack_push(&frame->operand_stack, 0);
                 }
             }
             break;
@@ -1169,7 +1167,7 @@ static j2me_error_t execute_single_instruction(j2me_vm_t* vm, j2me_stack_frame_t
                                 if (field_result == J2ME_SUCCESS) {
                                     LOG_DEBUG("[解释器] putfield: 设置对象 0x%x 的字段值 0x%x\n", object_ref, field_value);
                                 } else {
-                                    LOG_DEBUG("[解释器] putfield: 字段设置失败: %d，忽略继续执行\n", field_result);
+                                    LOG_DEBUG("[解释器] putfield: 字段设置失败: %d\n", field_result);
                                 }
                             }
                         } else {

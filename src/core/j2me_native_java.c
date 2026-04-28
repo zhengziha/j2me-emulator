@@ -14,6 +14,9 @@ j2me_error_t java_system_out_println(j2me_vm_t* vm, j2me_stack_frame_t* frame, v
     j2me_ref_t string_ref;
     j2me_error_t result = j2me_operand_stack_pop(&frame->operand_stack, (j2me_int*)&string_ref);
     if (result != J2ME_SUCCESS) return result;
+    j2me_int out_ref;
+    result = j2me_operand_stack_pop(&frame->operand_stack, &out_ref);
+    if (result != J2ME_SUCCESS) return result;
     if (vm->heap && string_ref != J2ME_NULL_REF) {
         const char* str = j2me_heap_string_get_chars(vm->heap, string_ref);
         if (str) {
@@ -31,6 +34,9 @@ j2me_error_t java_system_out_print(j2me_vm_t* vm, j2me_stack_frame_t* frame, voi
     if (!vm || !frame) return J2ME_ERROR_INVALID_PARAMETER;
     j2me_ref_t string_ref;
     j2me_error_t result = j2me_operand_stack_pop(&frame->operand_stack, (j2me_int*)&string_ref);
+    if (result != J2ME_SUCCESS) return result;
+    j2me_int out_ref;
+    result = j2me_operand_stack_pop(&frame->operand_stack, &out_ref);
     if (result != J2ME_SUCCESS) return result;
     if (vm->heap && string_ref != J2ME_NULL_REF) {
         const char* str = j2me_heap_string_get_chars(vm->heap, string_ref);

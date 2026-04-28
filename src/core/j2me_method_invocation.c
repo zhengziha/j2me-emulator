@@ -2,9 +2,52 @@
 #include "j2me_vm.h"
 #include "j2me_interpreter.h"
 #include "j2me_native_methods.h"
+#include "j2me_string.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+static j2me_heap_object_header_t* j2me_try_get_heap_object(j2me_vm_t* vm, j2me_ref_t ref) {
+    if (!vm || !vm->heap || ref == J2ME_NULL_REF) {
+        return NULL;
+    }
+    return j2me_heap_get_object(vm->heap, ref);
+}
+
+static bool j2me_stringbuilder_get_value_ref(j2me_vm_t* vm, j2me_ref_t builder_ref, j2me_ref_t* out_value_ref) {
+    if (!out_value_ref) {
+        return false;
+    }
+    *out_value_ref = J2ME_NULL_REF;
+
+    j2me_heap_object_header_t* obj = j2me_try_get_heap_object(vm, builder_ref);
+    if (!obj) {
+        return false;
+    }
+    if (obj->size < sizeof(void*) + sizeof(j2me_ref_t)) {
+        return false;
+    }
+
+    uint8_t* base = (uint8_t*)obj->data;
+    j2me_ref_t* value_slot = (j2me_ref_t*)(base + sizeof(void*));
+    *out_value_ref = *value_slot;
+    return true;
+}
+
+static bool j2me_stringbuilder_set_value_ref(j2me_vm_t* vm, j2me_ref_t builder_ref, j2me_ref_t value_ref) {
+    j2me_heap_object_header_t* obj = j2me_try_get_heap_object(vm, builder_ref);
+    if (!obj) {
+        return false;
+    }
+    if (obj->size < sizeof(void*) + sizeof(j2me_ref_t)) {
+        return false;
+    }
+
+    uint8_t* base = (uint8_t*)obj->data;
+    j2me_ref_t* value_slot = (j2me_ref_t*)(base + sizeof(void*));
+    *value_slot = value_ref;
+    return true;
+}
 
 /**
  * @file j2me_method_invocation_simple.c
@@ -187,7 +230,91 @@ j2me_error_t j2me_method_invocation_invoke_virtual(
     }
     
     // 如果是String方法，调用相应的本地方法
-    if (class_name && strstr(class_name, "String")) {
+    if (class_name && strcmp(class_name, "java/lang/StringBuilder") == 0) {
+        if (method_name && method_descriptor) {
+            if (strcmp(method_name, "append") == 0) {
+                if (strcmp(method_descriptor, "(Ljava/lang/String;)Ljava/lang/StringBuilder;") == 0) {
+                    j2me_int arg_ref_int = 0;
+                    j2me_error_t result = j2me_operand_stack_pop(&caller_frame->operand_stack, &arg_ref_int);
+                    if (result != J2ME_SUCCESS) {
+                        return result;
+                    }
+
+                    j2me_int this_ref_int = 0;
+                    result = j2me_operand_stack_pop(&caller_frame->operand_stack, &this_ref_int);
+                    if (result != J2ME_SUCCESS) {
+                        return result;
+                    }
+
+                    j2me_ref_t this_ref = (j2me_ref_t)this_ref_int;
+                    j2me_ref_t current = J2ME_NULL_REF;
+                    j2me_stringbuilder_get_value_ref(vm, this_ref, &current);
+                    if (current == J2ME_NULL_REF) {
+                        current = j2me_heap_string_create(vm->heap, "");
+                    }
+
+                    j2me_ref_t arg_ref = (j2me_ref_t)arg_ref_int;
+                    if (arg_ref == J2ME_NULL_REF) {
+                        arg_ref = j2me_heap_string_create(vm->heap, "null");
+                    }
+
+                    j2me_ref_t combined = j2me_heap_string_concat(vm->heap, current, arg_ref);
+                    j2me_stringbuilder_set_value_ref(vm, this_ref, combined);
+
+                    return j2me_operand_stack_push(&caller_frame->operand_stack, (j2me_int)this_ref);
+                }
+
+                if (strcmp(method_descriptor, "(I)Ljava/lang/StringBuilder;") == 0) {
+                    j2me_int int_value = 0;
+                    j2me_error_t result = j2me_operand_stack_pop(&caller_frame->operand_stack, &int_value);
+                    if (result != J2ME_SUCCESS) {
+                        return result;
+                    }
+
+                    j2me_int this_ref_int = 0;
+                    result = j2me_operand_stack_pop(&caller_frame->operand_stack, &this_ref_int);
+                    if (result != J2ME_SUCCESS) {
+                        return result;
+                    }
+
+                    char buf[32];
+                    snprintf(buf, sizeof(buf), "%d", int_value);
+                    j2me_ref_t arg_ref = j2me_heap_string_create(vm->heap, buf);
+
+                    j2me_ref_t this_ref = (j2me_ref_t)this_ref_int;
+                    j2me_ref_t current = J2ME_NULL_REF;
+                    j2me_stringbuilder_get_value_ref(vm, this_ref, &current);
+                    if (current == J2ME_NULL_REF) {
+                        current = j2me_heap_string_create(vm->heap, "");
+                    }
+
+                    j2me_ref_t combined = j2me_heap_string_concat(vm->heap, current, arg_ref);
+                    j2me_stringbuilder_set_value_ref(vm, this_ref, combined);
+
+                    return j2me_operand_stack_push(&caller_frame->operand_stack, (j2me_int)this_ref);
+                }
+            }
+
+            if (strcmp(method_name, "toString") == 0 && strcmp(method_descriptor, "()Ljava/lang/String;") == 0) {
+                j2me_int this_ref_int = 0;
+                j2me_error_t result = j2me_operand_stack_pop(&caller_frame->operand_stack, &this_ref_int);
+                if (result != J2ME_SUCCESS) {
+                    return result;
+                }
+                j2me_ref_t this_ref = (j2me_ref_t)this_ref_int;
+                j2me_ref_t current = J2ME_NULL_REF;
+                j2me_stringbuilder_get_value_ref(vm, this_ref, &current);
+                if (current == J2ME_NULL_REF) {
+                    current = j2me_heap_string_create(vm->heap, "");
+                    j2me_stringbuilder_set_value_ref(vm, this_ref, current);
+                }
+                return j2me_operand_stack_push(&caller_frame->operand_stack, (j2me_int)current);
+            }
+        }
+        return J2ME_SUCCESS;
+    }
+
+    if (class_name && strcmp(class_name, "java/lang/String") == 0) {
         if (method_name && method_descriptor) {
             // 弹出this引用
             j2me_int this_ref;
@@ -322,10 +449,9 @@ j2me_error_t j2me_method_invocation_invoke_virtual(
                 free(args);
             }
             
-            // 如果执行失败，记录但继续（简化处理）
             if (exec_result != J2ME_SUCCESS) {
-                printf("[方法调用] invokevirtual: 方法执行失败 (错误: %d)，继续执行\n", exec_result);
-                return J2ME_SUCCESS; // 返回成功以继续游戏流程
+                printf("[方法调用] invokevirtual: 方法执行失败 (错误: %d)\n", exec_result);
+                return exec_result;
             }
             return exec_result;
         } else {
@@ -536,10 +662,9 @@ j2me_error_t j2me_method_invocation_invoke_static(
                 }
             }
             
-            // 如果执行失败，记录但继续（简化处理）
             if (result != J2ME_SUCCESS) {
-                printf("[方法调用] invokestatic: 方法执行失败 (错误: %d)，继续执行\n", result);
-                return J2ME_SUCCESS; // 返回成功以继续游戏流程
+                printf("[方法调用] invokestatic: 方法执行失败 (错误: %d)\n", result);
+                return result;
             }
             return result;
         } else {
@@ -663,6 +788,49 @@ j2me_error_t j2me_method_invocation_invoke_special(
         printf("[方法调用] Thread.<init>: 线程初始化完成\n");
         return J2ME_SUCCESS;
     }
+
+    if (class_name && method_name &&
+        strcmp(class_name, "java/lang/StringBuilder") == 0 &&
+        strcmp(method_name, "<init>") == 0) {
+        if (method_descriptor && strcmp(method_descriptor, "()V") == 0) {
+            j2me_int this_ref_int = 0;
+            j2me_error_t result = j2me_operand_stack_pop(&caller_frame->operand_stack, &this_ref_int);
+            if (result != J2ME_SUCCESS) {
+                return result;
+            }
+            j2me_ref_t empty = j2me_heap_string_create(vm->heap, "");
+            j2me_stringbuilder_set_value_ref(vm, (j2me_ref_t)this_ref_int, empty);
+            return J2ME_SUCCESS;
+        }
+
+        if (method_descriptor && strcmp(method_descriptor, "(Ljava/lang/String;)V") == 0) {
+            j2me_int arg_ref_int = 0;
+            j2me_error_t result = j2me_operand_stack_pop(&caller_frame->operand_stack, &arg_ref_int);
+            if (result != J2ME_SUCCESS) {
+                return result;
+            }
+            j2me_int this_ref_int = 0;
+            result = j2me_operand_stack_pop(&caller_frame->operand_stack, &this_ref_int);
+            if (result != J2ME_SUCCESS) {
+                return result;
+            }
+            j2me_ref_t initial = (j2me_ref_t)arg_ref_int;
+            if (initial == J2ME_NULL_REF) {
+                initial = j2me_heap_string_create(vm->heap, "null");
+            }
+            j2me_stringbuilder_set_value_ref(vm, (j2me_ref_t)this_ref_int, initial);
+            return J2ME_SUCCESS;
+        }
+
+        j2me_int this_ref_int = 0;
+        j2me_error_t result = j2me_operand_stack_pop(&caller_frame->operand_stack, &this_ref_int);
+        if (result != J2ME_SUCCESS) {
+            return result;
+        }
+        j2me_ref_t empty = j2me_heap_string_create(vm->heap, "");
+        j2me_stringbuilder_set_value_ref(vm, (j2me_ref_t)this_ref_int, empty);
+        return J2ME_SUCCESS;
+    }
     
     // 弹出this引用 (如果栈不为空)
     j2me_int this_ref = 0;
@@ -754,10 +922,9 @@ j2me_error_t j2me_method_invocation_invoke_special(
                 free(args);
             }
             
-            // 如果执行失败，记录但继续（简化处理）
             if (result != J2ME_SUCCESS) {
-                printf("[方法调用] invokespecial: 方法执行失败 (错误: %d)，继续执行\n", result);
-                return J2ME_SUCCESS; // 返回成功以继续游戏流程
+                printf("[方法调用] invokespecial: 方法执行失败 (错误: %d)\n", result);
+                return result;
             }
             return result;
         } else {

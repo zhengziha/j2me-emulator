@@ -64,7 +64,7 @@ const char* j2me_heap_string_get_chars(j2me_heap_t* heap, j2me_ref_t ref) {
     return string_data->chars;
 }
 
-uint32_t j2me_string_get_length(j2me_heap_t* heap, j2me_ref_t ref) {
+uint32_t j2me_heap_string_get_length(j2me_heap_t* heap, j2me_ref_t ref) {
     if (!heap || ref == J2ME_NULL_REF) {
         return 0;
     }
@@ -77,7 +77,7 @@ uint32_t j2me_string_get_length(j2me_heap_t* heap, j2me_ref_t ref) {
     return string_data->length;
 }
 
-char j2me_string_char_at(j2me_heap_t* heap, j2me_ref_t ref, uint32_t index) {
+char j2me_heap_string_char_at(j2me_heap_t* heap, j2me_ref_t ref, uint32_t index) {
     if (!heap || ref == J2ME_NULL_REF) {
         return 0;
     }
@@ -90,7 +90,7 @@ char j2me_string_char_at(j2me_heap_t* heap, j2me_ref_t ref, uint32_t index) {
     return string_data->chars[index];
 }
 
-j2me_ref_t j2me_string_concat(j2me_heap_t* heap, j2me_ref_t ref1, j2me_ref_t ref2) {
+j2me_ref_t j2me_heap_string_concat(j2me_heap_t* heap, j2me_ref_t ref1, j2me_ref_t ref2) {
     if (!heap || ref1 == J2ME_NULL_REF || ref2 == J2ME_NULL_REF) {
         return J2ME_NULL_REF;
     }
@@ -102,8 +102,8 @@ j2me_ref_t j2me_string_concat(j2me_heap_t* heap, j2me_ref_t ref1, j2me_ref_t ref
         return J2ME_NULL_REF;
     }
     
-    uint32_t len1 = j2me_string_get_length(heap, ref1);
-    uint32_t len2 = j2me_string_get_length(heap, ref2);
+    uint32_t len1 = j2me_heap_string_get_length(heap, ref1);
+    uint32_t len2 = j2me_heap_string_get_length(heap, ref2);
     uint32_t total_len = len1 + len2;
     
     // 创建临时缓冲区
@@ -126,7 +126,7 @@ j2me_ref_t j2me_string_concat(j2me_heap_t* heap, j2me_ref_t ref1, j2me_ref_t ref
     return result;
 }
 
-j2me_ref_t j2me_string_substring(j2me_heap_t* heap, j2me_ref_t ref, uint32_t start, uint32_t end) {
+j2me_ref_t j2me_heap_string_substring(j2me_heap_t* heap, j2me_ref_t ref, uint32_t start, uint32_t end) {
     if (!heap || ref == J2ME_NULL_REF) {
         return J2ME_NULL_REF;
     }
@@ -153,7 +153,7 @@ j2me_ref_t j2me_string_substring(j2me_heap_t* heap, j2me_ref_t ref, uint32_t sta
     return result;
 }
 
-int j2me_string_compare(j2me_heap_t* heap, j2me_ref_t ref1, j2me_ref_t ref2) {
+int j2me_heap_string_compare(j2me_heap_t* heap, j2me_ref_t ref1, j2me_ref_t ref2) {
     if (!heap) {
         return 0;
     }
@@ -179,14 +179,14 @@ int j2me_string_compare(j2me_heap_t* heap, j2me_ref_t ref1, j2me_ref_t ref2) {
     return strcmp(str1, str2);
 }
 
-void j2me_string_print(j2me_heap_t* heap, j2me_ref_t ref) {
+void j2me_heap_string_print(j2me_heap_t* heap, j2me_ref_t ref) {
     if (!heap || ref == J2ME_NULL_REF) {
         printf("[String] (null)\n");
         return;
     }
     
     const char* str = j2me_heap_string_get_chars(heap, ref);
-    uint32_t length = j2me_string_get_length(heap, ref);
+    uint32_t length = j2me_heap_string_get_length(heap, ref);
     
     if (str) {
         printf("[String] ref=0x%x, length=%u, content=\"%s\"\n", ref, length, str);
